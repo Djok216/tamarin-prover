@@ -1,11 +1,12 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ForeignFunctionInterface #-}
 -- |
 -- Copyright   : (c) 2010-2012 Benedikt Schmidt & Simon Meier
 -- License     : GPL v3 (see LICENSE)
 --
--- Maintainer  : Benedikt Schmidt <beschmi@gmail.com>
+-- MaNumainer  : Benedikt Schmidt <beschmi@gmail.com>
 --
 -- AC-unification of DH terms using Maude as a backend.
 module Term.Maude.Process (
@@ -57,6 +58,11 @@ import System.Process
 import System.IO
 
 import Utils.Misc
+
+import Foreign.C.Types
+import Foreign.Ptr
+import Foreign.Marshal.Array
+
 -- import Extension.Data.Monoid
 
 -- import Debug.Trace
@@ -202,7 +208,68 @@ unifyCmd eqs =
     ppEq (Equal t1 t2) = ppMaude t1 <> " =? " <> ppMaude t2
     seqs = B.intercalate " /\\ " $ map ppEq eqs
 
+-- functie haskell care primeste [Equal] eqs..
+-- si care intoarce o lista de int
+getNodeLists 
+    :: (IsConst c)
+    => VTerm c LVar
+    -> ([VTerm c LVar], [VTerm c LVar], [VTerm c LVar])
+getNodeLists root = 
+  case root of
+    (LIT a) -> 
+      case a of
+        (Con c) -> ([LIT (Con c)], [], [])
+        (Var v) -> ([], [LIT (Var v)], [])
+    (FAPP x []) -> ([], [], [(FAPP x [])])
+    (FAPP x (y:z)) -> (consy ++ consz, varsy ++ varsz, funcsy ++ funcsz)
+      where
+        (consy, varsy, funcsy) = getNodeLists y
+        (consz, varsz, funcsz) = getNodeLists (FAPP x z)
 
+mapConsVarsFuncs
+    :: (IsConst c)
+    => [VTerm c LVar] -> M.Map (VTerm c LVar) CInt
+mapConsVarsFuncs [] = M.empty
+mapConsVarsFuncs (x:y) = 
+    if M.member x mapper then mapper
+    else M.insert x mapSize mapper
+  where
+    mapper = mapConsVarsFuncs y
+    mapSize = (fromIntegral (M.size mapper)) :: CInt
+
+getMapper 
+    :: (IsConst c)
+    => VTerm c LVar
+    -> M.Map (VTerm c LVar) CInt
+getMapper root = mapConsVarsFuncs $ constList ++ varsList ++ funcsList
+  where
+    (constList, varsList, funcsList) = getNodeLists root
+
+-- return ([preoder], [tip], Map(Lit, index))
+getPreorder_
+    :: (IsConst c)
+    => M.Map (VTerm c LVar) CInt
+    -> VTerm c LVar
+    -> [CInt]
+getPreorder_ mapper root =
+  case root of
+    (LIT a) -> [mapper M.! (LIT a), -1 :: CInt]
+    (FAPP x y) -> rootFunc ++ concat childPreorder ++ [-1 :: CInt]
+      where
+        rootFunc = [mapper M.! (FAPP x [])]
+        childPreorder = map (getPreorder_ mapper) y
+
+getPreorder
+    :: (IsConst c)
+    => VTerm c LVar
+    -> [CInt]
+getPreorder root = 
+    getPreorder_ mapper root
+  where
+    mapper = getMapper root
+  
+cppFuncCall :: CInt -> [CInt] -> IO ()
+cppFuncCall n a = withArray a $ \arr -> printPreorder n arr
 -- | @unifyViaMaude hnd eqs@ computes all AC unifiers of @eqs@ using the
 --   Maude process @hnd@.
 unifyViaMaude
@@ -210,9 +277,23 @@ unifyViaMaude
     => MaudeHandle
     -> (c -> LSort) -> [Equal (VTerm c LVar)] -> IO [SubstVFresh c LVar]
 unifyViaMaude _   _      []  = return [emptySubstVFresh]
-unifyViaMaude hnd sortOf eqs =
-    computeViaMaude hnd incUnifCount toMaude fromMaude eqs
+unifyViaMaude hnd sortOf eqs = 
+  do
+    putStr "Input Lhs: "
+    print lhs
+    putStr "Input Rhs: "
+    print rhs
+    cppFuncCall lhsPreorderSize lhsPreorder
+    cppFuncCall rhsPreorderSize rhsPreorder
+    x <- computeViaMaude hnd incUnifCount toMaude fromMaude eqs
+    return x
   where
+    lhs = eqLHS (head eqs)
+    rhs = eqRHS (head eqs)
+    lhsPreorder = getPreorder lhs
+    rhsPreorder = getPreorder rhs
+    lhsPreorderSize = fromIntegral (length lhsPreorder)
+    rhsPreorderSize = fromIntegral (length rhsPreorder)
     msig = mhMaudeSig hnd
     toMaude          = fmap unifyCmd . mapM (traverse (lTermToMTerm sortOf))
     fromMaude bindings reply =
@@ -305,3 +386,6 @@ normViaMaude hnd sortOf t =
 
 -- | Values that depend on a 'MaudeHandle'.
 type WithMaude = Reader MaudeHandle
+
+foreign import ccall unsafe "CppApi.h"
+    printPreorder :: CInt -> Ptr CInt -> IO ()

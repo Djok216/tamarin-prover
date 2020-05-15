@@ -122,6 +122,12 @@ executable tamarin-prover
     hs-source-dirs:    src
     main-is:           Main.hs
 
+    extra-libraries:
+      stdc++
+
+    c-sources:
+      cpplib/CppApi.cpp
+
     build-depends:
         HUnit
       , base
