@@ -125,8 +125,22 @@ executable tamarin-prover
     extra-libraries:
       stdc++
 
+    cc-options:
+      -std=c++17
+
     c-sources:
       cpplib/CppApi.cpp
+      cpplib/fastfunc.cpp
+      cpplib/fastqueryacunify.cpp
+      cpplib/fastsort.cpp
+      cpplib/fastsubst.cpp
+      cpplib/fastterm.cpp
+      cpplib/ldealg.cpp
+      cpplib/ldegraphalg.cpp
+      cpplib/unifeq.cpp
+      cpplib/unifeqsystem.cpp
+      cpplib/log.cpp
+      cpplib/match.cpp
 
     build-depends:
         HUnit

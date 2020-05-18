@@ -208,8 +208,6 @@ unifyCmd eqs =
     ppEq (Equal t1 t2) = ppMaude t1 <> " =? " <> ppMaude t2
     seqs = B.intercalate " /\\ " $ map ppEq eqs
 
--- functie haskell care primeste [Equal] eqs..
--- si care intoarce o lista de int
 getNodeLists 
     :: (IsConst c)
     => VTerm c LVar
