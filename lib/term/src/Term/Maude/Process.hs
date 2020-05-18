@@ -233,7 +233,7 @@ mapConsVarsFuncs (x:y) =
     else M.insert x mapSize mapper
   where
     mapper = mapConsVarsFuncs y
-    mapSize = (fromIntegral (M.size mapper)) :: CInt
+    mapSize = (fromIntegral (M.size mapper))
 
 getMapper 
     :: (IsConst c)
@@ -243,7 +243,29 @@ getMapper root = mapConsVarsFuncs $ constList ++ varsList ++ funcsList
   where
     (constList, varsList, funcsList) = getNodeLists root
 
--- return ([preoder], [tip], Map(Lit, index))
+getTypes
+    :: (IsConst c)
+    => M.Map CInt (VTerm c LVar)
+    -> [CInt]
+    -> [CInt]
+getTypes _ [] = []
+getTypes mapper (-1:y) = -1:(getTypes mapper y)
+getTypes mapper (x:y) = 
+  case mapper M.! x of
+    (LIT a) -> 
+      case a of
+        Con _ -> 0:tailTypes
+        Var _ -> 1:tailTypes
+    (FAPP z []) -> 
+      case z of
+        NoEq _ -> 2:tailTypes
+        AC _ -> 3:tailTypes
+        C _ -> 4:tailTypes
+        List -> 5:tailTypes
+    _ -> error "Something went wrong"
+  where
+    tailTypes = getTypes mapper y
+
 getPreorder_
     :: (IsConst c)
     => M.Map (VTerm c LVar) CInt
@@ -251,23 +273,33 @@ getPreorder_
     -> [CInt]
 getPreorder_ mapper root =
   case root of
-    (LIT a) -> [mapper M.! (LIT a), -1 :: CInt]
-    (FAPP x y) -> rootFunc ++ concat childPreorder ++ [-1 :: CInt]
+    (LIT a) -> [mapper M.! (LIT a), -1]
+    (FAPP x y) -> rootFunc ++ concat childPreorder ++ [-1]
       where
         rootFunc = [mapper M.! (FAPP x [])]
         childPreorder = map (getPreorder_ mapper) y
 
+-- return ([preoder], [types], Map(Lit, index), invMap)
 getPreorder
     :: (IsConst c)
     => VTerm c LVar
-    -> [CInt]
+    -> ([CInt], [CInt], M.Map (VTerm c LVar) CInt, M.Map CInt (VTerm c LVar))
 getPreorder root = 
-    getPreorder_ mapper root
+    (preorder, types, mapper, invMapper)
   where
     mapper = getMapper root
+    invMapper = M.fromList $ map (\(x, y) -> (y, x)) $ M.toList mapper
+    preorder = getPreorder_ mapper root
+    types = getTypes invMapper preorder
   
-cppFuncCall :: CInt -> [CInt] -> IO ()
-cppFuncCall n a = withArray a $ \arr -> printPreorder n arr
+cppFuncCall :: [CInt] -> [CInt]-> IO ()
+cppFuncCall a b = 
+    withArray a $ \arr1 ->
+      withArray b $ \arr2 ->
+        printPreorder len arr1 arr2
+    where
+      len = fromIntegral $ length a
+
 -- | @unifyViaMaude hnd eqs@ computes all AC unifiers of @eqs@ using the
 --   Maude process @hnd@.
 unifyViaMaude
@@ -281,17 +313,15 @@ unifyViaMaude hnd sortOf eqs =
     print lhs
     putStr "Input Rhs: "
     print rhs
-    cppFuncCall lhsPreorderSize lhsPreorder
-    cppFuncCall rhsPreorderSize rhsPreorder
+    cppFuncCall lhsPreorder lhsTypes
+    cppFuncCall rhsPreorder rhsTypes
     x <- computeViaMaude hnd incUnifCount toMaude fromMaude eqs
     return x
   where
     lhs = eqLHS (head eqs)
     rhs = eqRHS (head eqs)
-    lhsPreorder = getPreorder lhs
-    rhsPreorder = getPreorder rhs
-    lhsPreorderSize = fromIntegral (length lhsPreorder)
-    rhsPreorderSize = fromIntegral (length rhsPreorder)
+    (lhsPreorder, lhsTypes, lhsMapper, lhsInvMapper) = getPreorder lhs
+    (rhsPreorder, rhsTypes, rhsMapper, rhsInvMapper) = getPreorder rhs
     msig = mhMaudeSig hnd
     toMaude          = fmap unifyCmd . mapM (traverse (lTermToMTerm sortOf))
     fromMaude bindings reply =
@@ -386,4 +416,4 @@ normViaMaude hnd sortOf t =
 type WithMaude = Reader MaudeHandle
 
 foreign import ccall unsafe "CppApi.h"
-    printPreorder :: CInt -> Ptr CInt -> IO ()
+    printPreorder :: CInt -> Ptr CInt -> Ptr CInt -> IO ()
