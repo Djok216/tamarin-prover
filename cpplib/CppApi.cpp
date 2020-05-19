@@ -40,26 +40,28 @@ FastTerm constructFastTerm(int n, int* a, int* b) {
     if (b[i] == kTypeNoType) {
       auto index = stk.back().first;
       auto terms = stk.back().second;
-      FastTerm t = combineTerms(kNameConvert[a[index]] + to_string(a[index]), b[index], terms, sorts);
+      FastTerm t = combineTerms(kNameConvert[b[index]] + to_string(a[index]), b[index], terms, sorts);
       stk.pop_back();
       stk.back().second.emplace_back(t);
       continue;
     }
     if (b[i] == kTypeConst) {
-      string name = kNameConvert[a[i]] + to_string(a[i]);
+      string name = kNameConvert[b[i]] + to_string(a[i]);
       if (!existsFunc(name.c_str())) newConst(name.c_str(), fastStateSort());
       FastFunc f = getFuncByName(name.c_str());
       FastTerm t = newFuncTerm(f, nullptr);
       if (!stk.size()) return t;
       stk.back().second.emplace_back(t);
+      ++i;
       continue;
     }
     if (b[i] == kTypeVar) {
-      string name = kNameConvert[a[i]] + to_string(a[i]);
+      string name = kNameConvert[b[i]] + to_string(a[i]);
       if (!existsVar(name.c_str())) newVar(name.c_str(), fastStateSort());
       FastTerm var = static_cast<FastTerm>(getVarByName(name.c_str()));
       if (!stk.size()) return var;
       stk.back().second.emplace_back(var);
+      ++i;
       continue;
     }
     stk.emplace_back(i, vector<FastTerm>());
@@ -67,7 +69,7 @@ FastTerm constructFastTerm(int n, int* a, int* b) {
   assert(stk.size() == 1);
   auto index = stk.back().first;
   auto terms = stk.back().second;
-  return combineTerms(kNameConvert[a[index]] + to_string(a[index]), b[index], terms, sorts);
+  return combineTerms(kNameConvert[b[index]] + to_string(a[index]), b[index], terms, sorts);
 }
 
 void printPreorder(int n, int* a, int* b) {
