@@ -126,7 +126,7 @@ executable tamarin-prover
       stdc++
 
     cc-options:
-      -std=c++17
+      -std=c++11
 
     c-sources:
       cpplib/CppApi.cpp
