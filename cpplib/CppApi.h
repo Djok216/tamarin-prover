@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-extern void printPreorder(int n, int* a, int* b);
+extern void printSubstitutions(int, int*, int*, int, int*, int*);
 
 #ifdef __cplusplus
 }

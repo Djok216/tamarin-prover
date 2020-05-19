@@ -292,13 +292,19 @@ getPreorder root =
     preorder = getPreorder_ mapper root
     types = getTypes invMapper preorder
   
-cppFuncCall :: [CInt] -> [CInt]-> IO ()
-cppFuncCall a b = 
-    withArray a $ \arr1 ->
-      withArray b $ \arr2 ->
-        printPreorder len arr1 arr2
+cppFuncCall 
+    :: [CInt] -> [CInt] 
+    -> [CInt] -> [CInt]
+    -> IO ()
+cppFuncCall a1 b1 a2 b2 = 
+    withArray a1 $ \arr1 ->
+      withArray b1 $ \arr2 ->
+        withArray a2 $ \arr3 ->
+          withArray b2 $ \arr4 ->
+            printSubstitutions len1 arr1 arr2 len2 arr3 arr4
     where
-      len = fromIntegral $ length a
+      len1 = fromIntegral $ length a1
+      len2 = fromIntegral $ length a2
 
 -- | @unifyViaMaude hnd eqs@ computes all AC unifiers of @eqs@ using the
 --   Maude process @hnd@.
@@ -309,12 +315,7 @@ unifyViaMaude
 unifyViaMaude _   _      []  = return [emptySubstVFresh]
 unifyViaMaude hnd sortOf eqs = 
   do
-    putStr "Input Lhs: "
-    print lhs
-    putStr "Input Rhs: "
-    print rhs
-    cppFuncCall lhsPreorder lhsTypes
-    cppFuncCall rhsPreorder rhsTypes
+    cppFuncCall lhsPreorder lhsTypes rhsPreorder rhsTypes
     x <- computeViaMaude hnd incUnifCount toMaude fromMaude eqs
     return x
   where
@@ -416,4 +417,7 @@ normViaMaude hnd sortOf t =
 type WithMaude = Reader MaudeHandle
 
 foreign import ccall unsafe "CppApi.h"
-    printPreorder :: CInt -> Ptr CInt -> Ptr CInt -> IO ()
+    printSubstitutions 
+        :: CInt -> Ptr CInt -> Ptr CInt 
+        -> CInt -> Ptr CInt -> Ptr CInt
+        -> IO ()

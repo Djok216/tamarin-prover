@@ -4,7 +4,9 @@
 #include <vector>
 #include <tuple>
 #include <cassert>
+#include <cstring>
 #include "fastterm.h"
+#include "fastqueryacunify.h"
 using namespace std;
 
 constexpr int kTypeNoType = -1;
@@ -71,10 +73,21 @@ FastTerm constructFastTerm(int n, int* a, int* b) {
   return combineTerms(kNameConvert[b[index]] + to_string(a[index]), b[index], terms, sorts);
 }
 
-void printPreorder(int n, int* a, int* b) {
-  cout << "Cpp Func: ";
-  for (int i = 0; i < n; ++i) 
-    cout << "(" << a[i] << ", " << b[i] << ')' << " \n"[i == n - 1];
-  FastTerm term = constructFastTerm(n, a, b);
-  cout << toString(term) << '\n';
+void printSubstitutions(int n1, int* a1, int* b1, int n2, int* a2, int* b2) {
+  FastTerm t1 = constructFastTerm(n1, a1, b1);
+  FastTerm t2 = constructFastTerm(n2, a2, b2);
+  cout << "Unify: " << toString(t1) << ' ' << toString(t2) << '\n';
+  FastQueryACUnify solver(t1, t2);
+  auto minSubstSet = solver.solve();
+  char buffer[1 << 10];
+  if (!minSubstSet.size()) {
+    cout << "0 Substitutions\n";
+    return;
+  }
+  cout << "Substitutions:\n";
+  for (auto& subst : minSubstSet) {
+    memset(buffer, 0, sizeof(buffer));
+    printSubst(subst, buffer, 1 << 10);
+    cout << buffer << '\n';
+  }
 }
