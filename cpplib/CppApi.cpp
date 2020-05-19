@@ -23,13 +23,12 @@ FastTerm combineTerms(const string& name, int type, vector<FastTerm>& terms, vec
     return newFuncTerm(f, &terms[0]);
   }
   FastFunc f = newACFunc(name.c_str(), fastStateSort());
-  for (int sz = 2; sz <= terms.size(); sz *= 2)
+  for (int sz = 2; sz / 2 < terms.size(); sz *= 2)
     for (int i = 0; i + sz / 2 < terms.size(); i += sz) {
       FastTerm args[2] = {terms[i], terms[i + sz / 2]};
       FastTerm term = newFuncTerm(f, args);
       terms[i] = term;
     }
-
   return terms[0];
 }
 
