@@ -135,6 +135,7 @@ executable tamarin-prover
       cpplib/fastsort.cpp
       cpplib/fastsubst.cpp
       cpplib/fastterm.cpp
+      cpplib/fastvar.cpp
       cpplib/ldealg.cpp
       cpplib/ldegraphalg.cpp
       cpplib/unifeq.cpp

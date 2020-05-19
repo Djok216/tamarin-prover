@@ -37,7 +37,7 @@ FastTerm constructFastTerm(int n, int* a, int* b) {
   vector<pair<int, vector<FastTerm>>> stk;
   vector<FastSort> sorts(n / 2, fastStateSort());
   for (int i = 0; i < n - 1; ++i) {
-    if (a[i] == kTypeNoType) {
+    if (b[i] == kTypeNoType) {
       auto index = stk.back().first;
       auto terms = stk.back().second;
       FastTerm t = combineTerms(kNameConvert[a[index]] + to_string(a[index]), b[index], terms, sorts);
@@ -45,7 +45,7 @@ FastTerm constructFastTerm(int n, int* a, int* b) {
       stk.back().second.emplace_back(t);
       continue;
     }
-    if (a[i] == kTypeConst) {
+    if (b[i] == kTypeConst) {
       string name = kNameConvert[a[i]] + to_string(a[i]);
       if (!existsFunc(name.c_str())) newConst(name.c_str(), fastStateSort());
       FastFunc f = getFuncByName(name.c_str());
@@ -54,7 +54,7 @@ FastTerm constructFastTerm(int n, int* a, int* b) {
       stk.back().second.emplace_back(t);
       continue;
     }
-    if (a[i] == kTypeVar) {
+    if (b[i] == kTypeVar) {
       string name = kNameConvert[a[i]] + to_string(a[i]);
       if (!existsVar(name.c_str())) newVar(name.c_str(), fastStateSort());
       FastTerm var = static_cast<FastTerm>(getVarByName(name.c_str()));
