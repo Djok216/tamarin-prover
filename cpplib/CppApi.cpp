@@ -19,12 +19,20 @@ constexpr int kTypeList = 5;
 
 constexpr const char* kNameConvert[] = {"const", "var", "NoEqf", "ACf", "Cf", "Listf"};
 
-FastTerm combineTerms(const string& name, int type, vector<FastTerm>& terms, vector<FastSort>& sorts) {
-  if (type != kTypeAC) {
-    FastFunc f = newFunc(name.c_str(), fastStateSort(), terms.size(), &sorts[0]);
-    return newFuncTerm(f, &terms[0]);
+FastTerm combineTerms(
+    const string& name, 
+    int type, 
+    vector<FastTerm>& terms, 
+    vector<FastSort>& sorts) {
+  FastFunc f;
+  if (existsFunc(name.c_str())) f = getFuncByName(name.c_str());
+  else {
+    if (type != kTypeAC) {
+      f = newFunc(name.c_str(), fastStateSort(), terms.size(), &sorts[0]);
+      return newFuncTerm(f, &terms[0]);
+    }
+    f = newACFunc(name.c_str(), fastStateSort());
   }
-  FastFunc f = newACFunc(name.c_str(), fastStateSort());
   for (int sz = 2; sz / 2 < terms.size(); sz *= 2)
     for (int i = 0; i + sz / 2 < terms.size(); i += sz) {
       FastTerm args[2] = {terms[i], terms[i + sz / 2]};
@@ -41,7 +49,9 @@ FastTerm constructFastTerm(int n, int* a, int* b) {
     if (b[i] == kTypeNoType) {
       auto index = stk.back().first;
       auto terms = stk.back().second;
-      FastTerm t = combineTerms(kNameConvert[b[index]] + to_string(a[index]), b[index], terms, sorts);
+      FastTerm t = combineTerms(
+                      kNameConvert[b[index]] + to_string(a[index]),
+                      b[index], terms, sorts);
       stk.pop_back();
       stk.back().second.emplace_back(t);
       continue;
@@ -70,7 +80,9 @@ FastTerm constructFastTerm(int n, int* a, int* b) {
   assert(stk.size() == 1);
   auto index = stk.back().first;
   auto terms = stk.back().second;
-  return combineTerms(kNameConvert[b[index]] + to_string(a[index]), b[index], terms, sorts);
+  return combineTerms(
+            kNameConvert[b[index]] + to_string(a[index]),
+            b[index], terms, sorts);
 }
 
 void printSubstitutions(int n1, int* a1, int* b1, int n2, int* a2, int* b2) {

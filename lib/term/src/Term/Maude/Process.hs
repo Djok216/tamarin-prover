@@ -238,10 +238,15 @@ mapConsVarsFuncs (x:y) =
 getMapper 
     :: (IsConst c)
     => VTerm c LVar
+    -> VTerm c LVar
     -> M.Map (VTerm c LVar) CInt
-getMapper root = mapConsVarsFuncs $ constList ++ varsList ++ funcsList
+getMapper root1 root2 = mapConsVarsFuncs $ constList ++ varsList ++ funcsList
   where
-    (constList, varsList, funcsList) = getNodeLists root
+    (constList1, varsList1, funcsList1) = getNodeLists root1
+    (constList2, varsList2, funcsList2) = getNodeLists root2
+    constList = constList1 ++ constList2
+    varsList = varsList1 ++ varsList2
+    funcsList = funcsList1 ++ funcsList2
 
 getTypes
     :: (IsConst c)
@@ -282,13 +287,13 @@ getPreorder_ mapper root =
 -- return ([preoder], [types], Map(Lit, index), invMap)
 getPreorder
     :: (IsConst c)
-    => VTerm c LVar
-    -> ([CInt], [CInt], M.Map (VTerm c LVar) CInt, M.Map CInt (VTerm c LVar))
-getPreorder root = 
-    (preorder, types, mapper, invMapper)
+    => M.Map (VTerm c LVar) CInt
+    -> M.Map CInt (VTerm c LVar)
+    -> VTerm c LVar
+    -> ([CInt], [CInt])
+getPreorder mapper invMapper root = 
+    (preorder, types)
   where
-    mapper = getMapper root
-    invMapper = M.fromList $ map (\(x, y) -> (y, x)) $ M.toList mapper
     preorder = getPreorder_ mapper root
     types = getTypes invMapper preorder
   
@@ -317,12 +322,16 @@ unifyViaMaude hnd sortOf eqs =
   do
     cppFuncCall lhsPreorder lhsTypes rhsPreorder rhsTypes
     x <- computeViaMaude hnd incUnifCount toMaude fromMaude eqs
+    putStr "Maude Output:"
+    print x
     return x
   where
     lhs = eqLHS (head eqs)
     rhs = eqRHS (head eqs)
-    (lhsPreorder, lhsTypes, lhsMapper, lhsInvMapper) = getPreorder lhs
-    (rhsPreorder, rhsTypes, rhsMapper, rhsInvMapper) = getPreorder rhs
+    mapper = getMapper lhs rhs
+    invMapper = M.fromList $ map (\(x, y) -> (y, x)) $ M.toList mapper
+    (lhsPreorder, lhsTypes) = getPreorder mapper invMapper lhs
+    (rhsPreorder, rhsTypes) = getPreorder mapper invMapper rhs
     msig = mhMaudeSig hnd
     toMaude          = fmap unifyCmd . mapM (traverse (lTermToMTerm sortOf))
     fromMaude bindings reply =
