@@ -85,21 +85,28 @@ FastTerm constructFastTerm(int n, int* a, int* b) {
             b[index], terms, sorts);
 }
 
-void printSubstitutions(int n1, int* a1, int* b1, int n2, int* a2, int* b2) {
+int* printSubstitutions(int n1, int* a1, int* b1, int n2, int* a2, int* b2) {
   FastTerm t1 = constructFastTerm(n1, a1, b1);
   FastTerm t2 = constructFastTerm(n2, a2, b2);
   cout << "Unify: " << toString(t1) << ' ' << toString(t2) << '\n';
   FastQueryACUnify solver(t1, t2);
   auto minSubstSet = solver.solve();
-  char buffer[1 << 10];
+  int* a = new int[5];
+  a[0] = -69;
+  a[1] = -70;
+  a[2] = 123;
+  a[3] = -2;
+  a[4] = 3;
   if (!minSubstSet.size()) {
     cout << "0 Substitutions\n";
-    return;
+    return a;
   }
+  char buffer[1 << 10];
   cout << "Substitutions:\n";
   for (auto& subst : minSubstSet) {
     memset(buffer, 0, sizeof(buffer));
     printSubst(subst, buffer, 1 << 10);
     cout << buffer << '\n';
   }
+  return a;
 }

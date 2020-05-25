@@ -300,7 +300,7 @@ getPreorder mapper invMapper root =
 cppFuncCall 
     :: [CInt] -> [CInt] 
     -> [CInt] -> [CInt]
-    -> IO ()
+    -> IO (Ptr CInt)
 cppFuncCall a1 b1 a2 b2 = 
     withArray a1 $ \arr1 ->
       withArray b1 $ \arr2 ->
@@ -320,7 +320,9 @@ unifyViaMaude
 unifyViaMaude _   _      []  = return [emptySubstVFresh]
 unifyViaMaude hnd sortOf eqs = 
   do
-    cppFuncCall lhsPreorder lhsTypes rhsPreorder rhsTypes
+    y <- cppFuncCall lhsPreorder lhsTypes rhsPreorder rhsTypes
+    aux <- peekArray0 (-2 :: CInt) y
+    print aux
     x <- computeViaMaude hnd incUnifCount toMaude fromMaude eqs
     putStr "Maude Output:"
     print x
@@ -429,4 +431,4 @@ foreign import ccall unsafe "CppApi.h"
     printSubstitutions 
         :: CInt -> Ptr CInt -> Ptr CInt 
         -> CInt -> Ptr CInt -> Ptr CInt
-        -> IO ()
+        -> IO (Ptr CInt)
