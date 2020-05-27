@@ -307,9 +307,72 @@ cppFuncCall a1 b1 a2 b2 =
         withArray a2 $ \arr3 ->
           withArray b2 $ \arr4 ->
             printSubstitutions len1 arr1 arr2 len2 arr3 arr4
-    where
-      len1 = fromIntegral $ length a1
-      len2 = fromIntegral $ length a2
+  where
+    len1 = fromIntegral $ length a1
+    len2 = fromIntegral $ length a2
+
+splitSubsts :: CInt -> [CInt] -> [CInt] -> [[CInt]]
+splitSubsts _ [] [] = []
+splitSubsts _ x [] = [x]
+splitSubst val y (x:xs) =
+    if x == val then y : splitSubsts val xs []
+    else splitSubsts val xs $ y ++ [x]
+
+combineTerms :: (VTerm c LVar, [VTerm c LVar]) -> VTerm c LVar
+combineTerms (func, terms) = FAPP x terms where (FAPP x _) = func
+
+constructTermFromPreorder
+    :: (IsConst c)
+    => M.Map CInt (VTerm c LVar)
+    -> [(VTerm c LVar, [VTerm c LVar])]
+    -> [CInt]
+    -> VTerm c LVar
+constructTermFromPreorder _ _ [] = error "Construct Term From Preorder Error"
+constructTermFromPreorder mapper stk (-1:[]) = combineTerms $ head stk
+constructTermFromPreorder mapper stk (-1:xs) = 
+    constructTermFromPreorder mapper nstk xs
+  where
+    (y:ys) = stk
+    t = combineTerms y
+    (z:zs) = ys
+    nstk = (fst z, (snd z) ++ [t]) : zs  
+constructTermFromPreorder mapper [] (x:(-1):_) =
+    if M.member x mapper then M.lookup x mapper 
+    else LIT $ Var $ freshLVar (show Name FreshName x) LSortFresh
+constructTermFromPreorder mapper stk (x:xs) = 
+    case root of
+      (LIT a) -> constructTermFromPreorder mapper nstkLIT $ tail xs
+      _ -> constructTermFromPreorder mapper nstkFAPP xs
+  where
+    root = if M.member x mapper then M.lookup x mapper else LIT $ Var $ freshLVar (show Name FreshName x) LSortFresh
+    nextVal = head xs
+    (y:ys) = stk
+    nstkLIT = (fst y, (snd y) ++ [root]) : ys
+    nstkFAPP = (root, []) : stk
+
+
+applyMapper
+    :: (IsConst c)
+    => M.Map CInt (VTerm c LVar)
+    -> [(CInt, [CInt])]
+    -> [(LVar, VTerm c LVar)]
+applyMapper _ [] = []
+applyMapper mapper (x:xs) = 
+    (var, term) : applyMapper mapper xs
+  where
+    var = if M.member x mapper then M.lookup x mapper else freshLVar (show Name FreshName x) LSortFresh
+    term = constructTermFromPreorder mapper [] term
+
+-- decodeSubst 
+--     :: (IsConst c)
+--     => M.Map CInt (VTerm c LVar) 
+--     -> [[CInt]]
+--     -> [(LVar, VTerm c LVar)]
+-- decodeSubst mapper x =
+--     applyMapper mapper subst
+--   where
+--     subst = map (\(x:xs) -> (x, xs)) x
+
 
 -- | @unifyViaMaude hnd eqs@ computes all AC unifiers of @eqs@ using the
 --   Maude process @hnd@.
@@ -320,9 +383,10 @@ unifyViaMaude
 unifyViaMaude _   _      []  = return [emptySubstVFresh]
 unifyViaMaude hnd sortOf eqs = 
   do
-    y <- cppFuncCall lhsPreorder lhsTypes rhsPreorder rhsTypes
-    aux <- peekArray0 (-2 :: CInt) y
-    print aux
+    ptrSubstSet <- cppFuncCall lhsPreorder lhsTypes rhsPreorder rhsTypes
+    substSetEncoded <- peekArray0 (-4 :: CInt) ptrSubstSet
+    let encodedSubstsList = map (splitSubsts (-3 :: CInt) []) $ splitSubsts (-2 :: CInt) [] substSetEncoded
+    --let listSubst = map (decodeSubst invMapper) encodedSubstsList
     x <- computeViaMaude hnd incUnifCount toMaude fromMaude eqs
     putStr "Maude Output:"
     print x

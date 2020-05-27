@@ -1,14 +1,17 @@
 #include "CppApi.h"
 #include <iostream>
-#include <stack>
 #include <vector>
 #include <tuple>
 #include <cassert>
 #include <cstring>
+#include <map>
 #include "fastterm.h"
 #include "fastqueryacunify.h"
 using namespace std;
 
+constexpr int kEncodingEnd = -4;
+constexpr int kOneVarSubstEnd = -3;
+constexpr int kSubstEnd = -2;
 constexpr int kTypeNoType = -1;
 constexpr int kTypeConst = 0;
 constexpr int kTypeVar = 1;
@@ -17,10 +20,54 @@ constexpr int kTypeAC = 3;
 constexpr int kTypeC = 4;
 constexpr int kTypeList = 5;
 
-constexpr const char* kNameConvert[] = {"const", "var", "NoEqf", "ACf", "Cf", "Listf"};
+constexpr int kNumbOfTypes = 6;
+
+constexpr const char* kNameConvert[kNumbOfTypes] = 
+    {"HsConst", "HsVar", "HsNoEqf", "HsACf", "HsCf", "HsListf"};
+constexpr size_t kNameConvertSize[kNumbOfTypes] =
+    {
+    strlen(kNameConvert[kTypeConst]), strlen(kNameConvert[kTypeVar]),
+    strlen(kNameConvert[kTypeNoEq]), strlen(kNameConvert[kTypeAC]),
+    strlen(kNameConvert[kTypeC]), strlen(kNameConvert[kTypeList])
+    };
+
+map<FastTerm, int> mapper;
+int mapperOffset;
+vector<int> encodedss;
+
+int mapperGet(FastTerm term) {
+  if (mapper.count(term)) return mapper[term];
+  int val = mapperOffset + mapper.size();
+  return mapper[term] = val;
+}
+
+bool startsWith(const string& a, const string& b) {
+  if (b.size() < a.size()) return false;
+  for (int i = 0; i < b.size(); ++i) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
+}
+
+int getTermEncoding(FastTerm term) {
+  if (isVariable(term)) {
+    string name = getVarName(term);
+    if (startsWith(name, kNameConvert[kTypeVar])) {
+      return stoi(name.substr(kNameConvertSize[kTypeVar]));
+    }
+    return mapperGet(term);
+  }
+  string name = getFuncName(getFunc(term));
+  for (int i = 0; i < kNumbOfTypes; ++i) {
+    if (startsWith(name, kNameConvert[i])) {
+      return stoi(name.substr(kNameConvertSize[i]));
+    }
+  }
+  return mapperGet(term);
+}
 
 FastTerm combineTerms(
-    const string& name, 
+    const string& name,
     int type, 
     vector<FastTerm>& terms, 
     vector<FastSort>& sorts) {
@@ -85,28 +132,40 @@ FastTerm constructFastTerm(int n, int* a, int* b) {
             b[index], terms, sorts);
 }
 
+void preorder(FastTerm term) {
+  encodedss.push_back(mapperGet(term));
+  if (isFuncTerm(term)) {
+    int arity = getArity(getFunc(term));
+    for (int i = 0; i < arity; ++i) preorder(getArg(term, i));
+  }
+  encodedss.push_back(kTypeNoType);
+}
+
+// var -> term is encoded as
+// [f(var), preorder(term), f(var), preorder(term), ..., kSubstEnd]
+void encodeSubstSet(const vector<FastSubst>& substSet) {
+  encodedss.clear();
+  for (const auto& subst : substSet) {
+    for (int i = 0; i < subst.count; i += 2) {
+      FastVar var = subst.data[i];
+      FastTerm term = subst.data[i + 1];
+      encodedss.push_back(mapperGet(var));
+      preorder(term);
+      encodedss.push_back(kOneVarSubstEnd);
+    }
+    encodedss.push_back(kSubstEnd);
+  }
+  encodedss.push_back(kEncodingEnd);
+}
+
 int* printSubstitutions(int n1, int* a1, int* b1, int n2, int* a2, int* b2) {
+  mapper.clear();
+  mapperOffset = n1 / 2 + n2 / 2 + 1;
   FastTerm t1 = constructFastTerm(n1, a1, b1);
   FastTerm t2 = constructFastTerm(n2, a2, b2);
   cout << "Unify: " << toString(t1) << ' ' << toString(t2) << '\n';
   FastQueryACUnify solver(t1, t2);
-  auto minSubstSet = solver.solve();
-  int* a = new int[5];
-  a[0] = -69;
-  a[1] = -70;
-  a[2] = 123;
-  a[3] = -2;
-  a[4] = 3;
-  if (!minSubstSet.size()) {
-    cout << "0 Substitutions\n";
-    return a;
-  }
-  char buffer[1 << 10];
-  cout << "Substitutions:\n";
-  for (auto& subst : minSubstSet) {
-    memset(buffer, 0, sizeof(buffer));
-    printSubst(subst, buffer, 1 << 10);
-    cout << buffer << '\n';
-  }
-  return a;
+  auto substSet = solver.solve();
+  encodeSubstSet(substSet);
+  return encodedss.data();
 }
