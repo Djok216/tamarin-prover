@@ -2,6 +2,12 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Copyright   : (c) 2010-2012 Benedikt Schmidt & Simon Meier
 -- License     : GPL v3 (see LICENSE)
@@ -62,6 +68,7 @@ import Utils.Misc
 import Foreign.C.Types
 import Foreign.Ptr
 import Foreign.Marshal.Array
+import Data.Typeable
 
 -- import Extension.Data.Monoid
 
@@ -314,54 +321,86 @@ cppFuncCall a1 b1 a2 b2 =
 splitSubsts :: CInt -> [CInt] -> [CInt] -> [[CInt]]
 splitSubsts _ [] [] = []
 splitSubsts _ x [] = [x]
-splitSubst val y (x:xs) =
+splitSubsts val y (x:xs) =
     if x == val then y : splitSubsts val xs []
     else splitSubsts val xs $ y ++ [x]
 
-combineTerms :: (VTerm c LVar, [VTerm c LVar]) -> VTerm c LVar
-combineTerms (func, terms) = FAPP x terms where (FAPP x _) = func
+--combineTerms :: (VTerm c LVar, [VTerm c LVar]) -> VTerm c LVar
+--combineTerms (func, terms) = FAPP x terms where (FAPP x _) = func
+--
+--constructTermFromPreorder
+--    :: (IsConst c)
+--    => M.Map CInt (VTerm c LVar)
+--    -> [(VTerm c LVar, [VTerm c LVar])]
+--    -> [CInt]
+--    -> VTerm c LVar
+--constructTermFromPreorder _ _ [] = error "Construct Term From Preorder Error"
+--constructTermFromPreorder mapper stk (-1:[]) = combineTerms $ head stk
+--constructTermFromPreorder mapper stk (-1:xs) = 
+--    constructTermFromPreorder mapper nstk xs
+--  where
+--    (y:ys) = stk
+--    t = combineTerms y
+--    (z:zs) = ys
+--    nstk = (fst z, (snd z) ++ [t]) : zs  
+--constructTermFromPreorder mapper [] (x:(-1):_) =
+--    if M.member x mapper then 
+--      case M.lookup x mapper of
+--        (Just a) -> a
+--        _ -> error "something is wrong"
+--    else 
+--      case freshVar of
+--        (Just a) -> LIT (Var a)
+--        _ -> error "something is wrong"
+--  where
+--    id = NameId $ show x
+--    name = show $ Name FreshName id
+--    freshVar = freshLVar name LSortFresh
+--constructTermFromPreorder mapper stk (x:xs) = 
+--    case root of
+--      (LIT a) -> constructTermFromPreorder mapper nstkLIT $ tail xs
+--      _ -> constructTermFromPreorder mapper nstkFAPP xs
+--  where
+--    root =
+--      if M.member x mapper then 
+--        case M.lookup x mapper of
+--          (Just a) -> a
+--          _ -> error "something is wrong"
+--      else 
+--        case freshVar of
+--          (Just a) -> LIT (Var a)
+--          _ -> error "something is wrong"
+--    id = NameId $ show x
+--    name = show $ Name FreshName id
+--    freshVar = freshLVar name LSortFresh
+--    nextVal = head xs
+--    (y:ys) = stk
+--    nstkLIT = (fst y, (snd y) ++ [root]) : ys
+--    nstkFAPP = (root, []) : st--k--
 
-constructTermFromPreorder
-    :: (IsConst c)
-    => M.Map CInt (VTerm c LVar)
-    -> [(VTerm c LVar, [VTerm c LVar])]
-    -> [CInt]
-    -> VTerm c LVar
-constructTermFromPreorder _ _ [] = error "Construct Term From Preorder Error"
-constructTermFromPreorder mapper stk (-1:[]) = combineTerms $ head stk
-constructTermFromPreorder mapper stk (-1:xs) = 
-    constructTermFromPreorder mapper nstk xs
-  where
-    (y:ys) = stk
-    t = combineTerms y
-    (z:zs) = ys
-    nstk = (fst z, (snd z) ++ [t]) : zs  
-constructTermFromPreorder mapper [] (x:(-1):_) =
-    if M.member x mapper then M.lookup x mapper 
-    else LIT $ Var $ freshLVar (show Name FreshName x) LSortFresh
-constructTermFromPreorder mapper stk (x:xs) = 
-    case root of
-      (LIT a) -> constructTermFromPreorder mapper nstkLIT $ tail xs
-      _ -> constructTermFromPreorder mapper nstkFAPP xs
-  where
-    root = if M.member x mapper then M.lookup x mapper else LIT $ Var $ freshLVar (show Name FreshName x) LSortFresh
-    nextVal = head xs
-    (y:ys) = stk
-    nstkLIT = (fst y, (snd y) ++ [root]) : ys
-    nstkFAPP = (root, []) : stk
 
-
-applyMapper
-    :: (IsConst c)
-    => M.Map CInt (VTerm c LVar)
-    -> [(CInt, [CInt])]
-    -> [(LVar, VTerm c LVar)]
-applyMapper _ [] = []
-applyMapper mapper (x:xs) = 
-    (var, term) : applyMapper mapper xs
-  where
-    var = if M.member x mapper then M.lookup x mapper else freshLVar (show Name FreshName x) LSortFresh
-    term = constructTermFromPreorder mapper [] term
+--applyMapper
+--    :: (IsConst c)
+--    => M.Map CInt (VTerm c LVar)
+--    -> [(CInt, [CInt])]
+--    -> [(VTerm c LVar, VTerm c LVar)]
+--applyMapper _ [] = []
+--applyMapper mapper (x:xs) = 
+--    (var, term) : applyMapper mapper xs
+--  where
+--    var =
+--      if M.member (fst x) mapper then 
+--        case M.lookup (fst x) mapper of
+--          (Just a) -> a
+--          _ -> error "something is wrong"
+--      else 
+--        case freshVar of
+--          (Just a) -> LIT (Var a)
+--          _ -> error "something is wrong"
+--    id = NameId $ show (fst x)
+--    name = show $ Name FreshName id
+--    freshVar = freshLVar name LSortFresh
+--    term = constructTermFromPreorder mapper [] (snd x)
 
 -- decodeSubst 
 --     :: (IsConst c)
@@ -387,6 +426,10 @@ unifyViaMaude hnd sortOf eqs =
     substSetEncoded <- peekArray0 (-4 :: CInt) ptrSubstSet
     let encodedSubstsList = map (splitSubsts (-3 :: CInt) []) $ splitSubsts (-2 :: CInt) [] substSetEncoded
     --let listSubst = map (decodeSubst invMapper) encodedSubstsList
+    let id = NameId $ show 3
+    let name = show $ Name FreshName id
+    let freshVar = freshLVar name LSortFresh
+    print $ typeOf freshVar
     x <- computeViaMaude hnd incUnifCount toMaude fromMaude eqs
     putStr "Maude Output:"
     print x
