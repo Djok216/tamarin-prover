@@ -163,7 +163,6 @@ int* printSubstitutions(int n1, int* a1, int* b1, int n2, int* a2, int* b2) {
   mapperOffset = n1 / 2 + n2 / 2 + 1;
   FastTerm t1 = constructFastTerm(n1, a1, b1);
   FastTerm t2 = constructFastTerm(n2, a2, b2);
-  cout << "Unify: " << toString(t1) << ' ' << toString(t2) << '\n';
   FastQueryACUnify solver(t1, t2);
   auto substSet = solver.solve();
   encodeSubstSet(substSet);
