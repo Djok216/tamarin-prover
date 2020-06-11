@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-extern int* printSubstitutions(int, int*, int*, int, int*, int*);
+extern int* printSubstitutions(int, int*, int*, int*, int, int*, int*, int*);
 
 #ifdef __cplusplus
 }

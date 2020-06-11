@@ -275,6 +275,7 @@ getTypes
     -> [CInt]
 getTypes _ [] = []
 getTypes mapper (-1:y) = -1:(getTypes mapper y)
+getTypes mapper (-5:y) = -5:(getTypes mapper y)
 getTypes mapper (x:y) = 
   case mapper M.! x of
     (LIT a) -> 
@@ -304,42 +305,67 @@ getPreorder_ mapper root =
         rootFunc = [mapper M.! (FAPP x [])]
         childPreorder = map (getPreorder_ mapper) y
 
--- return ([preoder], [types])
+getSorts
+    :: (IsConst c)
+    => (c -> LSort)
+    -> VTerm c LVar
+    -> [CInt]
+getSorts sortOfConst root =
+    case root of
+      (LIT _) -> [encodedSort, -1]
+      (FAPP _ y) -> [encodedSort] ++ concat (map (getSorts sortOfConst) y) ++ [-1]
+  where
+    encodedSort = 
+        case sortOfLTerm sortOfConst root of
+          LSortPub -> 7
+          LSortFresh -> 8
+          LSortMsg -> 9
+          LSortNode -> 10
+
+-- return ([preoder], [types], [sorts])
 getPreorder2
     :: (IsConst c)
-    => M.Map (VTerm c LVar) CInt
+    => (c -> LSort)
+    -> M.Map (VTerm c LVar) CInt
     -> M.Map CInt (VTerm c LVar)
     -> VTerm c LVar
-    -> ([CInt], [CInt])
-getPreorder2 mapper invMapper root = 
-    (preorder, types)
+    -> ([CInt], [CInt], [CInt])
+getPreorder2 sortOfConst mapper invMapper root = 
+    (preorder, types, sorts)
   where
     preorder = getPreorder_ mapper root
     types = getTypes invMapper preorder
+    sorts = getSorts sortOfConst root
 
 getPreorder
     :: (IsConst c)
-    => M.Map (VTerm c LVar) CInt
+    => (c -> LSort)
+    -> M.Map (VTerm c LVar) CInt
     -> M.Map CInt (VTerm c LVar)
     -> [VTerm c LVar]
-    -> ([CInt], [CInt])
-getPreorder _ _ [] = ([], [])
-getPreorder mapper invMapper (x:xs) = 
-    (preorder ++ [-5] ++ tailPreorder, types ++ [-5] ++ tailTypes)
+    -> ([CInt], [CInt], [CInt])
+getPreorder _ _ _ [] = ([], [], [])
+getPreorder sortOfConst mapper invMapper (x:xs) = 
+    (ans1, ans2, ans3)
   where
-    (preorder, types) = getPreorder2 mapper invMapper x
-    (tailPreorder, tailTypes) = getPreorder mapper invMapper xs
+    (preorder, types, sorts) = getPreorder2 sortOfConst mapper invMapper x
+    (tailPreorder, tailTypes, tailSorts) = getPreorder sortOfConst mapper invMapper xs
+    ans1 = preorder ++ [-5] ++ tailPreorder
+    ans2 = types ++ [-5] ++ tailTypes
+    ans3 = sorts ++ [-5] ++ tailSorts
   
 cppFuncCall 
-    :: [CInt] -> [CInt] 
-    -> [CInt] -> [CInt]
+    :: [CInt] -> [CInt] -> [CInt] 
+    -> [CInt] -> [CInt] -> [CInt]
     -> IO (Ptr CInt)
-cppFuncCall a1 b1 a2 b2 = 
+cppFuncCall a1 b1 c1 a2 b2 c2 = 
     withArray a1 $ \arr1 ->
       withArray b1 $ \arr2 ->
-        withArray a2 $ \arr3 ->
-          withArray b2 $ \arr4 ->
-            printSubstitutions len1 arr1 arr2 len2 arr3 arr4
+        withArray c1 $ \arr3 ->
+          withArray a2 $ \arr4 ->
+            withArray b2 $ \arr5 ->
+              withArray c2 $ \arr6 ->
+                printSubstitutions len1 arr1 arr2 arr3 len2 arr4 arr5 arr6
   where
     len1 = fromIntegral $ length a1
     len2 = fromIntegral $ length a2
@@ -372,7 +398,7 @@ constructTermFromPreorder mapper [] (x:(-1):_) =
   where
     varId = NameId $ show x
     name = show $ Name FreshName varId
-    freshVar = LIT $ Var $ LVar name LSortFresh $ toInteger x
+    freshVar = LIT $ Var $ LVar name LSortMsg $ toInteger x
 constructTermFromPreorder _ (y:[]) (-1:_) = combineTerms y
 constructTermFromPreorder mapper stk (-1:xs) = 
     constructTermFromPreorder mapper nstk xs
@@ -392,7 +418,7 @@ constructTermFromPreorder mapper [] (x:xs) =
       else freshVar
     varId = NameId $ show x
     name = show $ Name FreshName varId
-    freshVar = LIT $ Var $ LVar name LSortFresh $ toInteger x
+    freshVar = LIT $ Var $ LVar name LSortMsg $ toInteger x
     nstkFAPP = [(root, [])]
 constructTermFromPreorder mapper stk (x:xs) = 
     case root of
@@ -407,7 +433,7 @@ constructTermFromPreorder mapper stk (x:xs) =
       else freshVar
     varId = NameId $ show x
     name = show $ Name FreshName varId
-    freshVar = LIT $ Var $ LVar name LSortFresh $ toInteger x
+    freshVar = LIT $ Var $ LVar name LSortMsg $ toInteger x
     (y:ys) = stk
     nstkLIT = (fst y, (snd y) ++ [root]) : ys
     nstkFAPP = (root, []) : stk
@@ -429,7 +455,7 @@ applyMapper mapper (x:xs) =
       else freshVar
     varId = NameId $ show (fst x)
     name = show $ Name FreshName varId
-    freshVar = LVar name LSortFresh (toInteger $ fst x)
+    freshVar = LVar name LSortMsg (toInteger $ fst x)
     term = constructTermFromPreorder mapper [] (snd x)
 
 decodeSubst 
@@ -453,24 +479,29 @@ unifyViaMaude
 unifyViaMaude _   _      []  = return [emptySubstVFresh]
 unifyViaMaude hnd sortOf eqs = 
   do
-    ptrSubstSet <- cppFuncCall lhsPreorder lhsTypes rhsPreorder rhsTypes
+    ptrSubstSet <- cppFuncCall lhsPreorder lhsTypes lhsSorts rhsPreorder rhsTypes rhsSorts
     substSetEncoded <- peekArray0 (-4 :: CInt) ptrSubstSet
     let encodedSubstsList = map (splitSubsts (-3 :: CInt) []) $ splitSubsts (-2 :: CInt) [] substSetEncoded
     let listSubst = map (decodeSubst invMapper) encodedSubstsList
     let listVFreshSubst = map substFromListVFresh listSubst
+    x <- computeViaMaude hnd incUnifCount toMaude fromMaude eqs
+    print "+++++++++++++++++++++++++++++++"
+    print $ length listVFreshSubst
+    print $ length x
+    print "_______________________________"
+    --error "ceva"
     return listVFreshSubst
-    --x <- computeViaMaude hnd incUnifCount toMaude fromMaude eqs
     --return x
   where
     mapper = getMapper eqs
     invMapper = M.fromList $ map (\(x, y) -> (y, x)) $ M.toList mapper
-    (lhsPreorder, lhsTypes) = getPreorder mapper invMapper $ map (\x -> eqLHS x) eqs
-    (rhsPreorder, rhsTypes) = getPreorder mapper invMapper $ map (\x -> eqRHS x) eqs
-    --msig = mhMaudeSig hnd
-    --toMaude          = fmap unifyCmd . mapM (traverse (lTermToMTerm sortOf))
-    --fromMaude bindings reply =
-    --    map (msubstToLSubstVFresh bindings) <$> parseUnifyReply msig reply
-    --incUnifCount mp  = mp { unifCount = 1 + unifCount mp }
+    (lhsPreorder, lhsTypes, lhsSorts) = getPreorder sortOf mapper invMapper $ map (\x -> eqLHS x) eqs
+    (rhsPreorder, rhsTypes, rhsSorts) = getPreorder sortOf mapper invMapper $ map (\x -> eqRHS x) eqs
+    msig = mhMaudeSig hnd
+    toMaude          = fmap unifyCmd . mapM (traverse (lTermToMTerm sortOf))
+    fromMaude bindings reply =
+        map (msubstToLSubstVFresh bindings) <$> parseUnifyReply msig reply
+    incUnifCount mp  = mp { unifCount = 1 + unifCount mp }
 
 ------------------------------------------------------------------------------
 -- Matching modulo AC
@@ -561,6 +592,6 @@ type WithMaude = Reader MaudeHandle
 
 foreign import ccall unsafe "CppApi.h"
     printSubstitutions 
-        :: CInt -> Ptr CInt -> Ptr CInt 
-        -> CInt -> Ptr CInt -> Ptr CInt
+        :: CInt -> Ptr CInt -> Ptr CInt -> Ptr CInt 
+        -> CInt -> Ptr CInt -> Ptr CInt -> Ptr CInt
         -> IO (Ptr CInt)

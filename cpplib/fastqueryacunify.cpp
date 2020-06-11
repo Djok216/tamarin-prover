@@ -66,9 +66,9 @@ vector<FastSubst> FastQueryACUnify::solveAC(UnifEq ueq) {
       ++M[t];
       return;
     }
-    if(!getArity(getFunc(t)) || getFunc(t) != f) { 
+    if(!getArity(getFunc(t)) || !eq_func(getFunc(t), f)) { 
       if(!constToVar.count(t)) {
-        constToVar[t] = createFreshVariable(fastStateSort());
+        constToVar[t] = createFreshVariable(getSort(ueq.t2));
       }
       ++M[constToVar[t]];
       return;
@@ -110,7 +110,7 @@ vector<FastSubst> FastQueryACUnify::solveAC(UnifEq ueq) {
   for (const auto &sol : result) {
     int index = 0;
     sigma.push_back(FastSubst());
-    FastTerm z = createFreshVariable(fastStateSort());
+    FastTerm z = createFreshVariable(getSort(ueq.t2));
     for (auto it : l) {
       sigma.back().addToSubst(it.first, createFuncWithSameVar(sol.first[index], z, f, uElemTerm));
       ++index;
@@ -139,11 +139,11 @@ vector<FastSubst> FastQueryACUnify::solveAC(UnifEq ueq) {
       FastVar var = it.second;
       if (subst.inDomain(var)) {
         FastTerm t = subst.image(var);
-        if(isFuncTerm(t) && t != it.second) {
+        if(isFuncTerm(t) && !eq_term(t, it.second)) {
           return false;
         }
         if(isVariable(t)) {
-          if(constSubst.count(t) && constSubst[t] != it.first) {
+          if(constSubst.count(t) && !eq_term(constSubst[t], it.first)) {
             return false;
           }
           constSubst[t] = it.first;
@@ -169,7 +169,7 @@ vector<FastSubst> FastQueryACUnify::solveAC(UnifEq ueq) {
           continue;
         }
         FastTerm aux = sigmaImage[i][j];
-        if (isVariable(aux) || aux != uElemTerm) {
+        if (isVariable(aux) || !eq_term(aux, uElemTerm)) {
           used |= 1 << j;
           if (used == allBits) {
             return true;
@@ -189,7 +189,7 @@ vector<FastSubst> FastQueryACUnify::solveAC(UnifEq ueq) {
       }
       for (int j = 0; j < m; ++j) {
         FastTerm aux = sigmaImage[i][j];
-        if (isVariable(aux) || aux != uElemTerm) {
+        if (isVariable(aux) || !eq_term(aux, uElemTerm)) {
           FastTerm p[2] = {ans[j], aux};
           ans[j] = (ans[j] != MISSING_UELEM ? newFuncTerm(f, p) : aux);
         }
@@ -249,6 +249,7 @@ vector<FastSubst> FastQueryACUnify::solve() {
 }
 
 vector<FastSubst> FastQueryACUnify::solve(UnifEqSystem ues) {
+  UnifEqSystem savedUes = ues;
   vector<FastSubst> minSubstSet;
   queue<pair<UnifEqSystem, FastSubst>> q;
   for (q.push(make_pair(ues, FastSubst())); !q.empty(); q.pop()) {
@@ -279,7 +280,7 @@ vector<FastSubst> FastQueryACUnify::solve(UnifEqSystem ues) {
             nues.addEq(UnifEq(arg1, uElemTerm));
             nues.addEq(UnifEq(arg2, eq.t1), true);
             q.push(make_pair(nues, subst));
-            if (arg1 != arg2) {
+            if (!eq_term(arg1, arg2)) {
               nues = UnifEqSystem(ues);
               nues.addEq(UnifEq(arg1, eq.t1));
               nues.addEq(UnifEq(arg2, uElemTerm), true);
@@ -310,7 +311,7 @@ vector<FastSubst> FastQueryACUnify::solve(UnifEqSystem ues) {
       if (isFuncTerm(eq.t1) && isFuncTerm(eq.t2)) {
         auto func1 = getFunc(eq.t1);
         auto func2 = getFunc(eq.t2);
-        if (func1 != func2) {
+        if (!eq_func(func1, func2)) {
           ues.pop_back();
           if (getUnityElement(func1) != MISSING_UELEM) {
             FastFunc uElem = getUnityElement(func1);
@@ -355,6 +356,13 @@ vector<FastSubst> FastQueryACUnify::solve(UnifEqSystem ues) {
         ues.pop_back();
         ues.decomp(eq.t1, eq.t2);
       }
+    }
+    if (toAdd) {
+      for (const auto& it : savedUes) 
+        if (!eq_term(subst.applySubst(it.t1), subst.applySubst(it.t2))) {
+          toAdd = false;
+          break;
+        }
     }
     if (toAdd) {
       minSubstSet.push_back(subst);

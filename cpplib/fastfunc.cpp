@@ -653,6 +653,7 @@ const char *getFuncName(FastTerm func)
 
 bool eq_func(FastFunc func1, FastFunc func2)
 {
+  if (func1 == MISSING_UELEM) return func1 == func2;
   assert(validFastFunc(func1));
   assert(validFastFunc(func2));
   return func1 == func2;

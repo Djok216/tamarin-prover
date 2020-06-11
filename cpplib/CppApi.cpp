@@ -21,8 +21,11 @@ constexpr int kTypeNoEq = 2;
 constexpr int kTypeAC = 3;
 constexpr int kTypeC = 4;
 constexpr int kTypeList = 5;
-
 constexpr int kNumbOfTypes = 6;
+constexpr int kSortPub = 7;
+constexpr int kSortFresh = 8;
+constexpr int kSortMsg = 9;
+constexpr int kSortNode = 10;
 
 constexpr const char* kNameConvert[kNumbOfTypes] = 
     {"HsConst", "HsVar", "HsNoEqf", "HsACf", "HsCf", "HsListf"};
@@ -33,6 +36,7 @@ constexpr size_t kNameConvertSize[kNumbOfTypes] =
     strlen(kNameConvert[kTypeC]), strlen(kNameConvert[kTypeList])
     };
 
+map<int, FastSort> mapSorts;
 map<FastTerm, int> mapper;
 int mapperOffset;
 vector<int> encodedss;
@@ -71,17 +75,18 @@ int getTermEncoding(FastTerm term) {
 FastTerm combineTerms(
     const string& name,
     int type, 
-    vector<FastTerm>& terms, 
-    vector<FastSort>& sorts) {
+    vector<FastTerm>& terms) {
   FastFunc f;
   if (existsFunc(name.c_str())) f = getFuncByName(name.c_str());
   else {
     if (type != kTypeAC) {
-      f = newFunc(name.c_str(), fastStateSort(), terms.size(), &sorts[0]);
-      return newFuncTerm(f, &terms[0]);
-    }
-    f = newACFunc(name.c_str(), fastStateSort());
+      vector<FastSort> sorts(terms.size());
+      for (int i = 0; i < sorts.size(); ++i) sorts[i] = getSort(terms[i]);
+      f = newFunc(name.c_str(), mapSorts[kSortMsg], terms.size(), &sorts[0]);
+    } else f = newACFunc(name.c_str(), mapSorts[kSortMsg]);
   }
+
+  if (type != kTypeAC) return newFuncTerm(f, &terms[0]);
   for (int sz = 2; sz / 2 < terms.size(); sz *= 2)
     for (int i = 0; i + sz / 2 < terms.size(); i += sz) {
       FastTerm args[2] = {terms[i], terms[i + sz / 2]};
@@ -91,23 +96,22 @@ FastTerm combineTerms(
   return terms[0];
 }
 
-FastTerm constructFastTerm(int n, int* a, int* b) {
+FastTerm constructFastTerm(int n, int* a, int* b, int* c) {
   vector<pair<int, vector<FastTerm>>> stk;
-  vector<FastSort> sorts(n / 2, fastStateSort());
   for (int i = 0; i < n - 1; ++i) {
     if (b[i] == kTypeNoType) {
       auto index = stk.back().first;
       auto terms = stk.back().second;
       FastTerm t = combineTerms(
                       kNameConvert[b[index]] + to_string(a[index]),
-                      b[index], terms, sorts);
+                      b[index], terms);
       stk.pop_back();
       stk.back().second.emplace_back(t);
       continue;
     }
     if (b[i] == kTypeConst) {
       string name = kNameConvert[b[i]] + to_string(a[i]);
-      if (!existsFunc(name.c_str())) newConst(name.c_str(), fastStateSort());
+      if (!existsFunc(name.c_str())) newConst(name.c_str(), mapSorts[c[i]]);
       FastFunc f = getFuncByName(name.c_str());
       FastTerm t = newFuncTerm(f, nullptr);
       if (!stk.size()) return t;
@@ -117,7 +121,7 @@ FastTerm constructFastTerm(int n, int* a, int* b) {
     }
     if (b[i] == kTypeVar) {
       string name = kNameConvert[b[i]] + to_string(a[i]);
-      if (!existsVar(name.c_str())) newVar(name.c_str(), fastStateSort());
+      if (!existsVar(name.c_str())) newVar(name.c_str(), mapSorts[c[i]]);
       FastTerm var = static_cast<FastTerm>(getVarByName(name.c_str()));
       if (!stk.size()) return var;
       stk.back().second.emplace_back(var);
@@ -129,9 +133,7 @@ FastTerm constructFastTerm(int n, int* a, int* b) {
   assert(stk.size() == 1);
   auto index = stk.back().first;
   auto terms = stk.back().second;
-  return combineTerms(
-            kNameConvert[b[index]] + to_string(a[index]),
-            b[index], terms, sorts);
+  return combineTerms(kNameConvert[b[index]] + to_string(a[index]), b[index], terms);
 }
 
 void preorder(FastTerm term) {
@@ -160,20 +162,31 @@ void encodeSubstSet(const vector<FastSubst>& substSet) {
   encodedss.push_back(kEncodingEnd);
 }
 
-int* printSubstitutions(int n1, int* a1, int* b1, int n2, int* a2, int* b2) {
+int* printSubstitutions(int n1, int* a1, int* b1, int* c1, int n2, int* a2, int* b2, int* c2) {
   mapper.clear();
-  for (n1 = 0; a1[n1] != kEndOfEncodedTerm; ++n1);
-  for (n2 = 0; a2[n2] != kEndOfEncodedTerm; ++n2);
+  static bool sortInit = false;
+  if (!sortInit) {
+    sortInit = true;
+    mapSorts[kSortPub] = newSort("LSortPub");
+    mapSorts[kSortFresh] = newSort("LSortFresh");
+    mapSorts[kSortMsg] = newSort("LSortMsg");
+    mapSorts[kSortNode] = newSort("LSortNode");
+    newSubSort(mapSorts[kSortFresh], mapSorts[kSortMsg]);
+    newSubSort(mapSorts[kSortPub], mapSorts[kSortMsg]);
+  }
+
   mapperOffset = n1 / 2 + n2 / 2 + 1;
   UnifEqSystem ues;
   for (int i = 0; i < n1; ++i) {
     int n11 = 0, n22 = 0;
-    for (n11 = 0; a1[n11] != kEndOfEncodedTerm; ++n11);
-    for (n22 = 0; a2[n22] != kEndOfEncodedTerm; ++n22);
-    FastTerm t1 = constructFastTerm(n11, a1, b1);
-    FastTerm t2 = constructFastTerm(n22, a2, b2);
-    while (n11--) ++a1, ++b1, ++i;
-    while (n22--) ++a2, ++b2;
+    for (n11 = 0; a1[n11] != kEndOfEncodedTerm; ++n11);// cout << '(' << a1[n11] << ',' << b1[n11] << ") ";
+    //cout << '\n';
+    for (n22 = 0; a2[n22] != kEndOfEncodedTerm; ++n22);// cout << '(' << a2[n22] << ',' << b2[n22] << ") ";
+    //cout << '\n';
+    FastTerm t1 = constructFastTerm(n11, a1, b1, c1);
+    FastTerm t2 = constructFastTerm(n22, a2, b2, c2);
+    while (n11--) ++a1, ++b1, ++c1, ++i;
+    while (n22--) ++a2, ++b2, ++c2;
     ues.addEq(UnifEq(t1, t2), true);
   }
   FastQueryACUnify solver(0, 0);
