@@ -453,7 +453,6 @@ unifyViaMaude
 unifyViaMaude _   _      []  = return [emptySubstVFresh]
 unifyViaMaude hnd sortOf eqs = 
   do
-    print $ length eqs
     ptrSubstSet <- cppFuncCall lhsPreorder lhsTypes rhsPreorder rhsTypes
     substSetEncoded <- peekArray0 (-4 :: CInt) ptrSubstSet
     let encodedSubstsList = map (splitSubsts (-3 :: CInt) []) $ splitSubsts (-2 :: CInt) [] substSetEncoded

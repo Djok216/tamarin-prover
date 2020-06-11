@@ -174,9 +174,8 @@ int* printSubstitutions(int n1, int* a1, int* b1, int n2, int* a2, int* b2) {
     FastTerm t2 = constructFastTerm(n22, a2, b2);
     while (n11--) ++a1, ++b1, ++i;
     while (n22--) ++a2, ++b2;
-    ues.emplace_back(t1, t2);
+    ues.addEq(UnifEq(t1, t2), true);
   }
-  cout << ues.size() << '\n';
   FastQueryACUnify solver(0, 0);
   auto substSet = solver.solve(ues);
   encodeSubstSet(substSet);
