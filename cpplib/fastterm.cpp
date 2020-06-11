@@ -307,12 +307,13 @@ bool eq_term_list(FastTerm *tl1, FastTerm *tl2, uint count)
 
 char buffer[1024];
 
+bool argsComp(FastTerm t1, FastTerm t2) {
+  if (isFuncTerm(t1) == isFuncTerm(t2)) return t1 < t2;
+  return isFuncTerm(t1);
+}
+
 bool eq_term(FastTerm t1, FastTerm t2)
 {
-  // printTerm(t1, buffer, 1024);
-  // printf("eq1 %s (%d)\n", buffer, t1);
-  // printTerm(t1, buffer, 1024);
-  // printf("eq2 %s (%d)\n", buffer, t2);
   assert(validFastTerm(t1));
   assert(validFastTerm(t2));
   if (isFuncTerm(t1) && isFuncTerm(t2)) {
@@ -321,17 +322,20 @@ bool eq_term(FastTerm t1, FastTerm t2)
     if (!eq_func(func1, func2)) {
       return false;
     }
-    FastTerm *args1 = args(t1);
-    FastTerm *args2 = args(t2);
     assert(getArity(func1) == getArity(func2));
-    return eq_term_list(args1, args2, getArity(func1));
+    if (getArity(func1) == 0) return true;
+    vector<FastTerm> args1(args(t1), args(t1) + getArity(func1));
+    vector<FastTerm> args2(args(t2), args(t2) + getArity(func2));
+    if (isFuncAC(func1)) {
+      sort(args1.begin(), args1.end(), argsComp);
+      sort(args2.begin(), args2.end(), argsComp);
+    }
+    return eq_term_list(args1.data(), args2.data(), getArity(func1));
   }
-  else if (isVariable(t1) && isVariable(t2)) {
+  if (isVariable(t1) && isVariable(t2)) {
     return eq_var(t1, t2);
   }
-  else {
-    return false;
-  }
+  return false;
 }
 
 bool containsUnboundVariable(FastTerm term, FastVar var) {
