@@ -245,6 +245,10 @@ vector<FastSubst> FastQueryACUnify::solveAC(UnifEq ueq) {
 
 vector<FastSubst> FastQueryACUnify::solve() {
   UnifEqSystem ues(t1, t2);
+  return solve(ues);
+}
+
+vector<FastSubst> FastQueryACUnify::solve(UnifEqSystem ues) {
   vector<FastSubst> minSubstSet;
   queue<pair<UnifEqSystem, FastSubst>> q;
   for (q.push(make_pair(ues, FastSubst())); !q.empty(); q.pop()) {

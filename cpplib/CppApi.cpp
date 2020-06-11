@@ -7,8 +7,10 @@
 #include <map>
 #include "fastterm.h"
 #include "fastqueryacunify.h"
+#include "unifeqsystem.h"
 using namespace std;
 
+constexpr int kEndOfEncodedTerm = -5;
 constexpr int kEncodingEnd = -4;
 constexpr int kOneVarSubstEnd = -3;
 constexpr int kSubstEnd = -2;
@@ -160,11 +162,23 @@ void encodeSubstSet(const vector<FastSubst>& substSet) {
 
 int* printSubstitutions(int n1, int* a1, int* b1, int n2, int* a2, int* b2) {
   mapper.clear();
+  for (n1 = 0; a1[n1] != kEndOfEncodedTerm; ++n1);
+  for (n2 = 0; a2[n2] != kEndOfEncodedTerm; ++n2);
   mapperOffset = n1 / 2 + n2 / 2 + 1;
-  FastTerm t1 = constructFastTerm(n1, a1, b1);
-  FastTerm t2 = constructFastTerm(n2, a2, b2);
-  FastQueryACUnify solver(t1, t2);
-  auto substSet = solver.solve();
+  UnifEqSystem ues;
+  for (int i = 0; i < n1; ++i) {
+    int n11 = 0, n22 = 0;
+    for (n11 = 0; a1[n11] != kEndOfEncodedTerm; ++n11);
+    for (n22 = 0; a2[n22] != kEndOfEncodedTerm; ++n22);
+    FastTerm t1 = constructFastTerm(n11, a1, b1);
+    FastTerm t2 = constructFastTerm(n22, a2, b2);
+    while (n11--) ++a1, ++b1, ++i;
+    while (n22--) ++a2, ++b2;
+    ues.emplace_back(t1, t2);
+  }
+  cout << ues.size() << '\n';
+  FastQueryACUnify solver(0, 0);
+  auto substSet = solver.solve(ues);
   encodeSubstSet(substSet);
   return encodedss.data();
 }

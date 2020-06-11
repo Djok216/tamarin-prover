@@ -232,27 +232,41 @@ getNodeLists root =
 
 mapConsVarsFuncs
     :: (IsConst c)
-    => [VTerm c LVar] -> M.Map (VTerm c LVar) CInt
-mapConsVarsFuncs [] = M.empty
-mapConsVarsFuncs (x:y) = 
-    if M.member x mapper then mapper
-    else M.insert x mapSize mapper
+    => M.Map (VTerm c LVar) CInt
+    -> [VTerm c LVar] -> M.Map (VTerm c LVar) CInt
+mapConsVarsFuncs mapper [] = mapper
+mapConsVarsFuncs mapper (x:y) = 
+    if M.member x mapper2 then mapper2
+    else M.insert x map2Size mapper2
   where
-    mapper = mapConsVarsFuncs y
-    mapSize = (fromIntegral (M.size mapper))
+    mapper2 = mapConsVarsFuncs mapper y
+    map2Size = (fromIntegral (M.size mapper2))
 
-getMapper 
+getMapperTerms 
     :: (IsConst c)
-    => VTerm c LVar
+    => M.Map (VTerm c LVar) CInt
+    -> VTerm c LVar
     -> VTerm c LVar
     -> M.Map (VTerm c LVar) CInt
-getMapper root1 root2 = mapConsVarsFuncs $ constList ++ varsList ++ funcsList
+getMapperTerms mapper root1 root2 = mapConsVarsFuncs mapper $ constList ++ varsList ++ funcsList
   where
     (constList1, varsList1, funcsList1) = getNodeLists root1
     (constList2, varsList2, funcsList2) = getNodeLists root2
     constList = constList1 ++ constList2
     varsList = varsList1 ++ varsList2
     funcsList = funcsList1 ++ funcsList2
+
+getMapper
+    :: (IsConst c)
+    => [Equal (VTerm c LVar)]
+    -> M.Map (VTerm c LVar) CInt
+getMapper [] = M.empty
+getMapper (x:xs) = 
+    getMapperTerms mapper lhs rhs
+  where
+    lhs = eqLHS x
+    rhs = eqRHS x
+    mapper = getMapper xs
 
 getTypes
     :: (IsConst c)
@@ -290,18 +304,31 @@ getPreorder_ mapper root =
         rootFunc = [mapper M.! (FAPP x [])]
         childPreorder = map (getPreorder_ mapper) y
 
--- return ([preoder], [types], Map(Lit, index), invMap)
-getPreorder
+-- return ([preoder], [types])
+getPreorder2
     :: (IsConst c)
     => M.Map (VTerm c LVar) CInt
     -> M.Map CInt (VTerm c LVar)
     -> VTerm c LVar
     -> ([CInt], [CInt])
-getPreorder mapper invMapper root = 
+getPreorder2 mapper invMapper root = 
     (preorder, types)
   where
     preorder = getPreorder_ mapper root
     types = getTypes invMapper preorder
+
+getPreorder
+    :: (IsConst c)
+    => M.Map (VTerm c LVar) CInt
+    -> M.Map CInt (VTerm c LVar)
+    -> [VTerm c LVar]
+    -> ([CInt], [CInt])
+getPreorder _ _ [] = ([], [])
+getPreorder mapper invMapper (x:xs) = 
+    (preorder ++ [-5] ++ tailPreorder, types ++ [-5] ++ tailTypes)
+  where
+    (preorder, types) = getPreorder2 mapper invMapper x
+    (tailPreorder, tailTypes) = getPreorder mapper invMapper xs
   
 cppFuncCall 
     :: [CInt] -> [CInt] 
@@ -426,6 +453,7 @@ unifyViaMaude
 unifyViaMaude _   _      []  = return [emptySubstVFresh]
 unifyViaMaude hnd sortOf eqs = 
   do
+    print $ length eqs
     ptrSubstSet <- cppFuncCall lhsPreorder lhsTypes rhsPreorder rhsTypes
     substSetEncoded <- peekArray0 (-4 :: CInt) ptrSubstSet
     let encodedSubstsList = map (splitSubsts (-3 :: CInt) []) $ splitSubsts (-2 :: CInt) [] substSetEncoded
@@ -435,17 +463,15 @@ unifyViaMaude hnd sortOf eqs =
     --x <- computeViaMaude hnd incUnifCount toMaude fromMaude eqs
     --return x
   where
-    lhs = eqLHS (head eqs)
-    rhs = eqRHS (head eqs)
-    mapper = getMapper lhs rhs
+    mapper = getMapper eqs
     invMapper = M.fromList $ map (\(x, y) -> (y, x)) $ M.toList mapper
-    (lhsPreorder, lhsTypes) = getPreorder mapper invMapper lhs
-    (rhsPreorder, rhsTypes) = getPreorder mapper invMapper rhs
-    msig = mhMaudeSig hnd
-    toMaude          = fmap unifyCmd . mapM (traverse (lTermToMTerm sortOf))
-    fromMaude bindings reply =
-        map (msubstToLSubstVFresh bindings) <$> parseUnifyReply msig reply
-    incUnifCount mp  = mp { unifCount = 1 + unifCount mp }
+    (lhsPreorder, lhsTypes) = getPreorder mapper invMapper $ map (\x -> eqLHS x) eqs
+    (rhsPreorder, rhsTypes) = getPreorder mapper invMapper $ map (\x -> eqRHS x) eqs
+    --msig = mhMaudeSig hnd
+    --toMaude          = fmap unifyCmd . mapM (traverse (lTermToMTerm sortOf))
+    --fromMaude bindings reply =
+    --    map (msubstToLSubstVFresh bindings) <$> parseUnifyReply msig reply
+    --incUnifCount mp  = mp { unifCount = 1 + unifCount mp }
 
 ------------------------------------------------------------------------------
 -- Matching modulo AC
