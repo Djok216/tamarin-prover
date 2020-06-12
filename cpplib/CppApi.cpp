@@ -48,25 +48,33 @@ int mapperGet(FastTerm term) {
 }
 
 bool startsWith(const string& a, const string& b) {
-  if (b.size() < a.size()) return false;
+  if (b.size() > a.size()) return false;
   for (int i = 0; i < b.size(); ++i) {
     if (a[i] != b[i]) return false;
   }
   return true;
 }
 
+int getNumber(const string& s) {
+  string cs = s;
+  if (unifProblemsCounter == 0) cs.pop_back();
+  for (int aux = unifProblemsCounter; aux; aux /= 10) cs.pop_back();
+  cs.pop_back();
+  return stoi(cs);
+}
+
 int getTermEncoding(FastTerm term) {
   if (isVariable(term)) {
     string name = getVarName(term);
     if (startsWith(name, kNameConvert[kTypeVar])) {
-      return stoi(name.substr(kNameConvertSize[kTypeVar]));
+      return getNumber(name.substr(kNameConvertSize[kTypeVar]));
     }
     return mapperGet(term);
   }
   string name = getFuncName(getFunc(term));
   for (int i = 0; i < kNumbOfTypes; ++i) {
     if (startsWith(name, kNameConvert[i])) {
-      return stoi(name.substr(kNameConvertSize[i]));
+      return getNumber(name.substr(kNameConvertSize[i]));
     }
   }
   return mapperGet(term);
@@ -138,7 +146,7 @@ FastTerm constructFastTerm(int n, int* a, int* b, int* c) {
 }
 
 void preorder(FastTerm term) {
-  encodedss.push_back(mapperGet(term));
+  encodedss.push_back(getTermEncoding(term));
   if (isFuncTerm(term)) {
     int arity = getArity(getFunc(term));
     for (int i = 0; i < arity; ++i) preorder(getArg(term, i));
@@ -154,7 +162,7 @@ void encodeSubstSet(const vector<FastSubst>& substSet) {
     for (int i = 0; i < subst.count; i += 2) {
       FastVar var = subst.data[i];
       FastTerm term = subst.data[i + 1];
-      encodedss.push_back(mapperGet(var));
+      encodedss.push_back(getTermEncoding(var));
       preorder(term);
       encodedss.push_back(kOneVarSubstEnd);
     }
@@ -186,11 +194,14 @@ int* printSubstitutions(int n1, int* a1, int* b1, int* c1, int n2, int* a2, int*
     FastTerm t2 = constructFastTerm(n22, a2, b2, c2);
     while (n11--) ++a1, ++b1, ++c1, ++i;
     while (n22--) ++a2, ++b2, ++c2;
+    cout << "AC-unify: " << toString(t1) << ' ' << toString(t2) << '\n';
     ues.addEq(UnifEq(t1, t2), true);
   }
   FastQueryACUnify solver(0, 0);
-  ++unifProblemsCounter;
   auto substSet = solver.solve(ues);
+  for (auto it : substSet) cout << toString(it) << '\n';
+  cout << "======================================\n";
   encodeSubstSet(substSet);
+  ++unifProblemsCounter;
   return encodedss.data();
 }

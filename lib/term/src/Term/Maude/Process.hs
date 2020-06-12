@@ -479,10 +479,6 @@ unifyViaMaude
 unifyViaMaude _   _      []  = return [emptySubstVFresh]
 unifyViaMaude hnd sortOf eqs = 
   do
-    mapper <- getMapper eqs
-    invMapper <- M.fromList $ map (\(x, y) -> (y, x)) $ M.toList mapper
-    (lhsPreorder, lhsTypes, lhsSorts) <- getPreorder sortOf mapper invMapper $ map (\x -> eqLHS x) eqs
-    (rhsPreorder, rhsTypes, rhsSorts) <- getPreorder sortOf mapper invMapper $ map (\x -> eqRHS x) eqs
     ptrSubstSet <- cppFuncCall lhsPreorder lhsTypes lhsSorts rhsPreorder rhsTypes rhsSorts
     substSetEncoded <- peekArray0 (-4 :: CInt) ptrSubstSet
     let encodedSubstsList = map (splitSubsts (-3 :: CInt) []) $ splitSubsts (-2 :: CInt) [] substSetEncoded
@@ -490,16 +486,19 @@ unifyViaMaude hnd sortOf eqs =
     let listVFreshSubst = map substFromListVFresh listSubst
     x <- computeViaMaude hnd incUnifCount toMaude fromMaude eqs
     putStrLn "+++++++++++++++++++++++++++++++"
-    print eqs
-    print $ length listVFreshSubst
+    --print eqs
+    --print $ length listVFreshSubst
     print listVFreshSubst
-    print x
-    print $ length x
+    --print $ length x
     putStrLn "_______________________________"
     --error "ceva"
     return listVFreshSubst
     --return x
   where
+    mapper = getMapper eqs
+    invMapper = M.fromList $ map (\(x, y) -> (y, x)) $ M.toList mapper
+    (lhsPreorder, lhsTypes, lhsSorts) = getPreorder sortOf mapper invMapper $ map (\x -> eqLHS x) eqs
+    (rhsPreorder, rhsTypes, rhsSorts) = getPreorder sortOf mapper invMapper $ map (\x -> eqRHS x) eqs
     msig = mhMaudeSig hnd
     toMaude          = fmap unifyCmd . mapM (traverse (lTermToMTerm sortOf))
     fromMaude bindings reply =
