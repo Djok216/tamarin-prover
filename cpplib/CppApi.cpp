@@ -188,6 +188,7 @@ int* printSubstitutions(int n1, int* a1, int* b1, int* c1, int n2, int* a2, int*
     while (n11--) ++a1, ++b1, ++c1, ++i;
     while (n22--) ++a2, ++b2, ++c2;
     ues.addEq(UnifEq(t1, t2), true);
+    cout << "AC-Unify: " << toString(t1) << ' ' << toString(t2) << '\n';
   }
   FastQueryACUnify solver(0, 0);
   auto substSet = solver.solve(ues);

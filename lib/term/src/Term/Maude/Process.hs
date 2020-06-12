@@ -485,10 +485,11 @@ unifyViaMaude hnd sortOf eqs =
     let listSubst = map (decodeSubst invMapper) encodedSubstsList
     let listVFreshSubst = map substFromListVFresh listSubst
     x <- computeViaMaude hnd incUnifCount toMaude fromMaude eqs
-    print "+++++++++++++++++++++++++++++++"
+    putStrLn "+++++++++++++++++++++++++++++++"
+    print eqs
     print $ length listVFreshSubst
     print $ length x
-    print "_______________________________"
+    putStrLn "_______________________________"
     --error "ceva"
     return listVFreshSubst
     --return x

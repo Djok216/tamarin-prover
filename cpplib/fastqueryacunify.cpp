@@ -68,7 +68,7 @@ vector<FastSubst> FastQueryACUnify::solveAC(UnifEq ueq) {
     }
     if(!getArity(getFunc(t)) || !eq_func(getFunc(t), f)) { 
       if(!constToVar.count(t)) {
-        constToVar[t] = createFreshVariable(getSort(ueq.t2));
+        constToVar[t] = createFreshVariable(getSort(t));
       }
       ++M[constToVar[t]];
       return;
@@ -110,7 +110,7 @@ vector<FastSubst> FastQueryACUnify::solveAC(UnifEq ueq) {
   for (const auto &sol : result) {
     int index = 0;
     sigma.push_back(FastSubst());
-    FastTerm z = createFreshVariable(getSort(ueq.t2));
+    FastTerm z = createFreshVariable(getSort(ueq.t1));
     for (auto it : l) {
       sigma.back().addToSubst(it.first, createFuncWithSameVar(sol.first[index], z, f, uElemTerm));
       ++index;
@@ -122,7 +122,7 @@ vector<FastSubst> FastQueryACUnify::solveAC(UnifEq ueq) {
     }
   }
   vector<vector<FastTerm>> sigmaImage(sigma.size(), vector<FastTerm>(l.size() + r.size()));
-  for(int i = 0; i < (int)sigma.size(); ++i) {
+  for(int i = 0; i < sigma.size(); ++i) {
     int index = 0;
     for(auto it : l) {
       sigmaImage[i][index] = sigma[i].image(it.first);
@@ -345,7 +345,11 @@ vector<FastSubst> FastQueryACUnify::solve(UnifEqSystem ues) {
           break;
         }
         if (isFuncAC(func1)) {
+          //cout << "solve AC-unify: " << toString(eq.t1) << ' ' << toString(eq.t2) << '\n';
           vector<FastSubst> sols = solveAC(eq);
+          //cout << "Unifications: " << sols.size() << '\n';
+          //for (auto& it : sols) cout << toString(it) << '\n';
+          //cout << "============================================\n";
           ues.pop_back();
           for (auto &sol : sols) {
             q.push(make_pair(UnifEqSystem(sol, ues), subst));
@@ -360,6 +364,7 @@ vector<FastSubst> FastQueryACUnify::solve(UnifEqSystem ues) {
     if (toAdd) {
       for (const auto& it : savedUes) 
         if (!eq_term(subst.applySubst(it.t1), subst.applySubst(it.t2))) {
+          cout << "NOT EQUAL: " << toString(subst.applySubst(it.t1)) << "   ======   " << toString(subst.applySubst(it.t2)) << '\n';
           toAdd = false;
           break;
         }
