@@ -351,9 +351,12 @@ vector<FastSubst> FastQueryACUnify::solve(UnifEqSystem ues) {
           for (auto& it : sols) cout << toString(it) << '\n';
           cout << "============================================\n";
           ues.pop_back();
+          auto magic = ues;
           for (auto &sol : sols) {
             q.push(make_pair(UnifEqSystem(sol, ues), subst));
           }
+          magic.decomp(eq.t1, eq.t2);
+          q.push(make_pair(magic, subst));
           toAdd = false;
           break;
         }

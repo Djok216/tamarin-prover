@@ -345,15 +345,14 @@ vector<FastSubst> FastQueryACUnify::solve(UnifEqSystem ues) {
           break;
         }
         if (isFuncAC(func1)) {
-          //cout << "solve AC-unify: " << toString(eq.t1) << ' ' << toString(eq.t2) << '\n';
           vector<FastSubst> sols = solveAC(eq);
-          //cout << "Unifications: " << sols.size() << '\n';
-          //for (auto& it : sols) cout << toString(it) << '\n';
-          //cout << "============================================\n";
           ues.pop_back();
+          auto syntacticUes = ues;
           for (auto &sol : sols) {
             q.push(make_pair(UnifEqSystem(sol, ues), subst));
           }
+          syntacticUes.decomp(eq.t1, eq.t2);
+          q.push(make_pair(syntacticUes, subst));
           toAdd = false;
           break;
         }

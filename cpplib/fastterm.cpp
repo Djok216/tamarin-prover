@@ -612,7 +612,7 @@ void printToOss(FastTerm term, ostringstream &oss)
 {
   if (isVariable(term)) {
     assert(/* 0 <= term && */term < MAXVARS);
-    oss << getVarName(term);
+    oss << getVarName(term) << "(" << getSortName(getSort(term)) << ")";
   }
   else {
     assert(isFuncTerm(term));
@@ -624,7 +624,7 @@ void printToOss(FastTerm term, ostringstream &oss)
     if (getArity(func) > 0) {
       oss << "(";
     }
-    oss << getFuncName(func);
+    oss << getFuncName(func) << "(" << getSortName(getSort(term)) << ")";
     for (uint i = 0; i < getArity(func); ++i) {
       oss << " ";
       printToOss(termData[index + i + 1], oss);

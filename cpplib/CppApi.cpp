@@ -38,7 +38,7 @@ constexpr size_t kNameConvertSize[kNumbOfTypes] =
 
 map<int, FastSort> mapSorts;
 map<FastTerm, int> mapper;
-int mapperOffset;
+int mapperOffset, unifProblemsCounter;
 vector<int> encodedss;
 
 int mapperGet(FastTerm term) {
@@ -103,14 +103,14 @@ FastTerm constructFastTerm(int n, int* a, int* b, int* c) {
       auto index = stk.back().first;
       auto terms = stk.back().second;
       FastTerm t = combineTerms(
-                      kNameConvert[b[index]] + to_string(a[index]),
+                      kNameConvert[b[index]] + to_string(a[index]) + "#" + to_string(unifProblemsCounter),
                       b[index], terms);
       stk.pop_back();
       stk.back().second.emplace_back(t);
       continue;
     }
     if (b[i] == kTypeConst) {
-      string name = kNameConvert[b[i]] + to_string(a[i]);
+      string name = kNameConvert[b[i]] + to_string(a[i]) + "#" + to_string(unifProblemsCounter);
       if (!existsFunc(name.c_str())) newConst(name.c_str(), mapSorts[c[i]]);
       FastFunc f = getFuncByName(name.c_str());
       FastTerm t = newFuncTerm(f, nullptr);
@@ -120,7 +120,7 @@ FastTerm constructFastTerm(int n, int* a, int* b, int* c) {
       continue;
     }
     if (b[i] == kTypeVar) {
-      string name = kNameConvert[b[i]] + to_string(a[i]);
+      string name = kNameConvert[b[i]] + to_string(a[i]) + "#" + to_string(unifProblemsCounter);
       if (!existsVar(name.c_str())) newVar(name.c_str(), mapSorts[c[i]]);
       FastTerm var = static_cast<FastTerm>(getVarByName(name.c_str()));
       if (!stk.size()) return var;
@@ -133,7 +133,8 @@ FastTerm constructFastTerm(int n, int* a, int* b, int* c) {
   assert(stk.size() == 1);
   auto index = stk.back().first;
   auto terms = stk.back().second;
-  return combineTerms(kNameConvert[b[index]] + to_string(a[index]), b[index], terms);
+  string finalName = kNameConvert[b[index]] + to_string(a[index]) + "#" + to_string(unifProblemsCounter);
+  return combineTerms(finalName, b[index], terms);
 }
 
 void preorder(FastTerm term) {
@@ -179,18 +180,16 @@ int* printSubstitutions(int n1, int* a1, int* b1, int* c1, int n2, int* a2, int*
   UnifEqSystem ues;
   for (int i = 0; i < n1; ++i) {
     int n11 = 0, n22 = 0;
-    for (n11 = 0; a1[n11] != kEndOfEncodedTerm; ++n11);// cout << '(' << a1[n11] << ',' << b1[n11] << ") ";
-    //cout << '\n';
-    for (n22 = 0; a2[n22] != kEndOfEncodedTerm; ++n22);// cout << '(' << a2[n22] << ',' << b2[n22] << ") ";
-    //cout << '\n';
+    for (n11 = 0; a1[n11] != kEndOfEncodedTerm; ++n11);
+    for (n22 = 0; a2[n22] != kEndOfEncodedTerm; ++n22);
     FastTerm t1 = constructFastTerm(n11, a1, b1, c1);
     FastTerm t2 = constructFastTerm(n22, a2, b2, c2);
     while (n11--) ++a1, ++b1, ++c1, ++i;
     while (n22--) ++a2, ++b2, ++c2;
     ues.addEq(UnifEq(t1, t2), true);
-    cout << "AC-Unify: " << toString(t1) << ' ' << toString(t2) << '\n';
   }
   FastQueryACUnify solver(0, 0);
+  ++unifProblemsCounter;
   auto substSet = solver.solve(ues);
   encodeSubstSet(substSet);
   return encodedss.data();
