@@ -149,10 +149,59 @@ void exemplul4() {
   for (auto& subst : ans) cout << toString(subst) << '\n';
 }
 
+void exemplul5() {
+  initTamarinSorts();
+  FastVar x2 = newVar("x2", mapSorts[kSortMsg]);
+  FastSort sorts[6] = {mapSorts[kSortFresh], mapSorts[kSortMsg], 
+                  mapSorts[kSortMsg], mapSorts[kSortMsg], 
+                  mapSorts[kSortMsg], mapSorts[kSortMsg]};
+  FastFunc g = newFunc("g", mapSorts[kSortMsg], 1, sorts);
+  FastFunc f = newACFunc("f", mapSorts[kSortMsg]);
+  FastFunc c2 = newConst("c2", mapSorts[kSortFresh]);
+  FastFunc c3 = newConst("c3", mapSorts[kSortFresh]);
+  FastFunc c4 = newConst("c4", mapSorts[kSortFresh]);
+  FastFunc c5 = newConst("c5", mapSorts[kSortFresh]);
+  FastTerm c2t = newFuncTerm(c2, nullptr);
+  FastTerm c3t = newFuncTerm(c3, nullptr);
+  FastTerm c4t = newFuncTerm(c4, nullptr);
+  FastTerm c5t = newFuncTerm(c5, nullptr);
+
+  FastTerm args[2] = {c2t, c3t};
+  FastTerm gc2 = newFuncTerm(g, args);
+
+  FastTerm aux1 = newFuncTerm(f, args);
+  args[0] = c4t; args[1] = x2;
+  FastTerm aux2 = newFuncTerm(f, args);
+  args[0] = aux1; args[1] = aux2;
+  FastTerm aux3 = newFuncTerm(f, args);
+  args[0] = aux3; args[1] = gc2;
+  FastTerm t1 = newFuncTerm(f, args);
+
+  args[0] = c2t; args[1] = c2t;
+  aux1 = newFuncTerm(f, args);
+  args[0] = c3t; args[1] = c4t;
+  aux2 = newFuncTerm(f, args);
+  args[0] = aux1; args[1] = aux2;
+  aux3 = newFuncTerm(f, args);
+  args[0] = c5t; args[1] = gc2;
+  FastTerm aux4 = newFuncTerm(f, args);
+  args[0] = aux3; args[1] = aux4;
+  FastTerm t2 = newFuncTerm(f, args);
+
+  cout << "AC-Unify: " << toString(t1) << ' ' << toString(t2) << '\n';
+  cout << eq_term(t1, t2) << '\n';
+  FastQueryACUnify solver(t1, t2);
+  auto ans = solver.solve();
+  cout << "Number of unifiers: " << ans.size() << '\n';
+  for (auto& subst : ans) cout << toString(subst) << '\n';
+}
+
+
 int main() {
   //exemplul1();
   //exemplul2();
   //exemplul3();
-  exemplul4();
+  //exemplul4();
+  exemplul5();
   return 0;
 }

@@ -336,13 +336,14 @@ bool eq_term(FastTerm t1, FastTerm t2)
     };
     getArgs(t1, func1, args1);
     getArgs(t2, func2, args2);
+    if (args1.size() != args2.size()) return false;
     auto argsComp = [](FastTerm t1, FastTerm t2) {
       if (isFuncTerm(t1) == isFuncTerm(t2)) return toString(t1) < toString(t2);
       return isFuncTerm(t1);
     };
     sort(args1.begin(), args1.end(), argsComp);
     sort(args2.begin(), args2.end(), argsComp);
-    return eq_term_list(args1.data(), args2.data(), getArity(func1));
+    return eq_term_list(args1.data(), args2.data(), args1.size());
   }
   if (isVariable(t1) && isVariable(t2)) {
     return eq_var(t1, t2);

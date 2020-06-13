@@ -483,18 +483,17 @@ unifyViaMaude hnd sortOf eqs =
     substSetEncoded <- peekArray0 (-4 :: CInt) ptrSubstSet
     let encodedSubstsList = map (splitSubsts (-3 :: CInt) []) $ splitSubsts (-2 :: CInt) [] substSetEncoded
     let listSubst = map (decodeSubst invMapper) encodedSubstsList
-    let listVFreshSubst = map substFromListVFresh listSubst
+    let listVFreshSubst = map removeRenamings $ map substFromListVFresh listSubst
+    let generalUnifier = [x | x <- listVFreshSubst, (M.size $ svMap x) > 0]
     x <- computeViaMaude hnd incUnifCount toMaude fromMaude eqs
-    putStrLn "+++++++++++++++++++++++++++++++"
-    --print eqs
-    --print $ length listVFreshSubst
-    --print $ length x
-    print eqs
-    print listVFreshSubst
-    print x
-    putStrLn "_______________________________"
+    -- putStrLn "+++++++++++++++++++++++++++++++"
+    -- print $ "####### " ++ (show $ length generalUnifier)
+    -- print $ "@@@@@@@ " ++ (show $ length x)
+    -- print generalUnifier
+    -- print x
+    -- putStrLn "_______________________________"
     --error "ceva"
-    return listVFreshSubst
+    return generalUnifier
     --return x
   where
     mapper = getMapper eqs
@@ -594,7 +593,7 @@ normViaMaude hnd sortOf t =
 -- | Values that depend on a 'MaudeHandle'.
 type WithMaude = Reader MaudeHandle
 
-foreign import ccall unsafe "CppApi.h"
+foreign import ccall safe "CppApi.h"
     printSubstitutions 
         :: CInt -> Ptr CInt -> Ptr CInt -> Ptr CInt 
         -> CInt -> Ptr CInt -> Ptr CInt -> Ptr CInt

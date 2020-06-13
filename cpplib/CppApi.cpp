@@ -152,7 +152,15 @@ void preorder(FastTerm term) {
   encodedss.push_back(getTermEncoding(term));
   if (isFuncTerm(term)) {
     int arity = getArity(getFunc(term));
-    for (int i = 0; i < arity; ++i) preorder(getArg(term, i));
+    for (int i = 0; i < arity; ++i) {
+      auto arg = getArg(term, i);
+      if (isFuncTerm(arg) && getFunc(arg) == getFunc(term) && isFuncAC(getFunc(term))) {
+        preorder(getArg(arg, 0));
+        preorder(getArg(arg, 1));
+      } else {
+        preorder(getArg(term, i));
+      }
+    }
   }
   encodedss.push_back(kTypeNoType);
 }
@@ -177,9 +185,9 @@ void encodeSubstSet(const vector<FastSubst>& substSet) {
 int* printSubstitutions(int n1, int* a1, int* b1, int* c1, int n2, int* a2, int* b2, int* c2) {
   mapper.clear();
   maxVariableId = 0;
-  static bool sortInit = false;
-  if (!sortInit) {
-    sortInit = true;
+  static bool initHsSorts = false;
+  if (!initHsSorts) {
+    initHsSorts = true;
     mapSorts[kSortPub] = newSort("LSortPub");
     mapSorts[kSortFresh] = newSort("LSortFresh");
     mapSorts[kSortMsg] = newSort("LSortMsg");
@@ -187,7 +195,6 @@ int* printSubstitutions(int n1, int* a1, int* b1, int* c1, int n2, int* a2, int*
     newSubSort(mapSorts[kSortFresh], mapSorts[kSortMsg]);
     newSubSort(mapSorts[kSortPub], mapSorts[kSortMsg]);
   }
-
   UnifEqSystem ues;
   for (int i = 0; i < n1; ++i, ++a1, ++a2, ++b1, ++b2, ++c1, ++c2) {
     int n11 = 0, n22 = 0;
