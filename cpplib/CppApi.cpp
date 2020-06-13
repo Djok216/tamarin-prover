@@ -38,12 +38,13 @@ constexpr size_t kNameConvertSize[kNumbOfTypes] =
 
 map<int, FastSort> mapSorts;
 map<FastTerm, int> mapper;
-int mapperOffset, unifProblemsCounter;
+int unifProblemsCounter;
+int maxVariableId;
 vector<int> encodedss;
 
 int mapperGet(FastTerm term) {
   if (mapper.count(term)) return mapper[term];
-  int val = mapperOffset + mapper.size();
+  int val = mapper.size() + maxVariableId + 1;
   if (getSort(term) == mapSorts[kSortFresh]) val *= -1;
   return mapper[term] = val;
 }
@@ -130,6 +131,7 @@ FastTerm constructFastTerm(int n, int* a, int* b, int* c) {
     }
     if (b[i] == kTypeVar) {
       string name = kNameConvert[b[i]] + to_string(a[i]) + "#" + to_string(unifProblemsCounter);
+      maxVariableId = max(maxVariableId, a[i]);
       if (!existsVar(name.c_str())) newVar(name.c_str(), mapSorts[c[i]]);
       FastTerm var = static_cast<FastTerm>(getVarByName(name.c_str()));
       if (!stk.size()) return var;
@@ -174,6 +176,7 @@ void encodeSubstSet(const vector<FastSubst>& substSet) {
 
 int* printSubstitutions(int n1, int* a1, int* b1, int* c1, int n2, int* a2, int* b2, int* c2) {
   mapper.clear();
+  maxVariableId = 0;
   static bool sortInit = false;
   if (!sortInit) {
     sortInit = true;
@@ -185,7 +188,6 @@ int* printSubstitutions(int n1, int* a1, int* b1, int* c1, int n2, int* a2, int*
     newSubSort(mapSorts[kSortPub], mapSorts[kSortMsg]);
   }
 
-  mapperOffset = n1 / 2 + n2 / 2 + 1;
   UnifEqSystem ues;
   for (int i = 0; i < n1; ++i, ++a1, ++a2, ++b1, ++b2, ++c1, ++c2) {
     int n11 = 0, n22 = 0;

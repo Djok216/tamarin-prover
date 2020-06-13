@@ -399,7 +399,7 @@ constructTermFromPreorder mapper [] (x:(-1):_) =
   where
     key = abs x
     varSort = if x > -1 then LSortMsg else LSortFresh
-    freshVar = LIT $ Var $ LVar "x" varSort $ toInteger key
+    freshVar = LIT $ Var $ LVar "_x" varSort $ toInteger key
 constructTermFromPreorder mapper stk (-1:xs) = 
     constructTermFromPreorder mapper nstk xs
   where
@@ -418,7 +418,7 @@ constructTermFromPreorder mapper [] (x:xs) =
           _ -> error "something is wrong"
       else freshVar
     varSort = if x > -1 then LSortMsg else LSortFresh
-    freshVar = LIT $ Var $ LVar "x" varSort $ toInteger key
+    freshVar = LIT $ Var $ LVar "_x" varSort $ toInteger key
     nstkFAPP = [(root, [])]
 constructTermFromPreorder mapper stk (x:xs) = 
     case root of
@@ -433,7 +433,7 @@ constructTermFromPreorder mapper stk (x:xs) =
           _ -> error "something is wrong"
       else freshVar
     varSort = if x > -1 then LSortMsg else LSortFresh
-    freshVar = LIT $ Var $ LVar "x" varSort $ toInteger key
+    freshVar = LIT $ Var $ LVar "_x" varSort $ toInteger key
     (y:ys) = stk
     nstkLIT = (fst y, (snd y) ++ [root]) : ys
     nstkFAPP = (root, []) : stk
@@ -455,7 +455,7 @@ applyMapper mapper (x:xs) =
           _ -> error "something is wrong"
       else freshVar
     varSort = if fst x > -1 then LSortMsg else LSortFresh
-    freshVar = LVar "x" varSort (toInteger $ key)
+    freshVar = LVar "_x" varSort (toInteger $ key)
     term = constructTermFromPreorder mapper [] (snd x)
 
 decodeSubst 
