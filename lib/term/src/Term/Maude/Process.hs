@@ -391,15 +391,15 @@ constructTermFromPreorder _ _ [] = error "Construct Term From Preorder Error"
 constructTermFromPreorder _ (y:[]) (-1:_) = combineTerms y
 constructTermFromPreorder _ stk (-1:[]) = combineTerms $ head stk
 constructTermFromPreorder mapper [] (x:(-1):_) =
-    if M.member x mapper then 
-      case M.lookup x mapper of
+    if M.member key mapper then 
+      case M.lookup key mapper of
         (Just a) -> a
         _ -> error "something is wrong"
     else freshVar
   where
-    varId = NameId $ show x
-    name = show $ Name FreshName varId
-    freshVar = LIT $ Var $ LVar name LSortMsg $ toInteger x
+    key = abs x
+    varSort = if x > -1 then LSortMsg else LSortFresh
+    freshVar = LIT $ Var $ LVar "x" varSort $ toInteger key
 constructTermFromPreorder mapper stk (-1:xs) = 
     constructTermFromPreorder mapper nstk xs
   where
@@ -410,30 +410,30 @@ constructTermFromPreorder mapper stk (-1:xs) =
 constructTermFromPreorder mapper [] (x:xs) = 
     constructTermFromPreorder mapper nstkFAPP xs
   where
+    key = abs x
     root =
-      if M.member x mapper then 
-        case M.lookup x mapper of
+      if M.member key mapper then 
+        case M.lookup key mapper of
           (Just a) -> a
           _ -> error "something is wrong"
       else freshVar
-    varId = NameId $ show x
-    name = show $ Name FreshName varId
-    freshVar = LIT $ Var $ LVar name LSortMsg $ toInteger x
+    varSort = if x > -1 then LSortMsg else LSortFresh
+    freshVar = LIT $ Var $ LVar "x" varSort $ toInteger key
     nstkFAPP = [(root, [])]
 constructTermFromPreorder mapper stk (x:xs) = 
     case root of
       (LIT _) -> constructTermFromPreorder mapper nstkLIT $ tail xs
       _ -> constructTermFromPreorder mapper nstkFAPP xs
   where
+    key = abs x
     root =
-      if M.member x mapper then 
-        case M.lookup x mapper of
+      if M.member key mapper then 
+        case M.lookup key mapper of
           (Just a) -> a
           _ -> error "something is wrong"
       else freshVar
-    varId = NameId $ show x
-    name = show $ Name FreshName varId
-    freshVar = LIT $ Var $ LVar name LSortMsg $ toInteger x
+    varSort = if x > -1 then LSortMsg else LSortFresh
+    freshVar = LIT $ Var $ LVar "x" varSort $ toInteger key
     (y:ys) = stk
     nstkLIT = (fst y, (snd y) ++ [root]) : ys
     nstkFAPP = (root, []) : stk
@@ -447,15 +447,15 @@ applyMapper _ [] = []
 applyMapper mapper (x:xs) = 
     (var, term) : applyMapper mapper xs
   where
+    key = abs $ fst x
     var =
-      if M.member (fst x) mapper then 
-        case M.lookup (fst x) mapper of
+      if M.member key mapper then 
+        case M.lookup key mapper of
           (Just (LIT (Var a))) -> a
           _ -> error "something is wrong"
       else freshVar
-    varId = NameId $ show (fst x)
-    name = show $ Name FreshName varId
-    freshVar = LVar name LSortMsg (toInteger $ fst x)
+    varSort = if fst x > -1 then LSortMsg else LSortFresh
+    freshVar = LVar "x" varSort (toInteger $ key)
     term = constructTermFromPreorder mapper [] (snd x)
 
 decodeSubst 
@@ -488,8 +488,10 @@ unifyViaMaude hnd sortOf eqs =
     putStrLn "+++++++++++++++++++++++++++++++"
     --print eqs
     --print $ length listVFreshSubst
-    print listVFreshSubst
     --print $ length x
+    print eqs
+    print listVFreshSubst
+    print x
     putStrLn "_______________________________"
     --error "ceva"
     return listVFreshSubst

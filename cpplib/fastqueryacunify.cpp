@@ -249,7 +249,7 @@ vector<FastSubst> FastQueryACUnify::solve() {
 }
 
 vector<FastSubst> FastQueryACUnify::solve(UnifEqSystem ues) {
-  UnifEqSystem savedUes = ues;
+  auto initUes = ues;
   vector<FastSubst> minSubstSet;
   queue<pair<UnifEqSystem, FastSubst>> q;
   for (q.push(make_pair(ues, FastSubst())); !q.empty(); q.pop()) {
@@ -295,11 +295,24 @@ vector<FastSubst> FastQueryACUnify::solve(UnifEqSystem ues) {
           // cerr << "sort of t1 " << getSortName(getSort(eq.t1)) << endl;
           // cerr << "sort of t2 " << getSortName(getSort(eq.t2)) << endl;
           // cerr << "subsort yes: " << eq.t1 << " " << eq.t2 << endl;
-          subst.composeWith(eq.t1, eq.t2);
-          ues.pop_back();
-          for (auto &it : ues) {
-            it.t1 = applyUnitySubst(it.t1, eq.t1, eq.t2);
-            it.t2 = applyUnitySubst(it.t2, eq.t1, eq.t2);
+          if (isVariable(eq.t2)) {
+            FastVar newVar = createFreshVariable(getSort(eq.t2));
+            subst.composeWith(eq.t1, newVar);
+            subst.composeWith(eq.t2, newVar);
+            ues.pop_back();
+            for (auto &it : ues) {
+              it.t1 = applyUnitySubst(it.t1, eq.t1, newVar);
+              it.t1 = applyUnitySubst(it.t1, eq.t2, newVar);
+              it.t2 = applyUnitySubst(it.t2, eq.t1, newVar);
+              it.t2 = applyUnitySubst(it.t2, eq.t2, newVar);
+            }
+          } else {
+            subst.composeWith(eq.t1, eq.t2);
+            ues.pop_back();
+            for (auto &it : ues) {
+              it.t1 = applyUnitySubst(it.t1, eq.t1, eq.t2);
+              it.t2 = applyUnitySubst(it.t2, eq.t1, eq.t2);
+            }
           }
           continue;
         } else {
@@ -361,12 +374,15 @@ vector<FastSubst> FastQueryACUnify::solve(UnifEqSystem ues) {
       }
     }
     if (toAdd) {
-      for (const auto& it : savedUes) 
-        if (!eq_term(subst.applySubst(it.t1), subst.applySubst(it.t2))) {
-          cout << "NOT EQUAL: " << toString(subst.applySubst(it.t1)) << "   ======   " << toString(subst.applySubst(it.t2)) << '\n';
+      for (auto& it : initUes) {
+        auto t1 = subst.applySubst(it.t1);
+        auto t2 = subst.applySubst(it.t2);
+        if (!eq_term(t1, t2)) {
+          cerr << "NOT EQUAL: " << toString(t1) << ' ' << toString(t2) << '\n';
           toAdd = false;
           break;
         }
+      }
     }
     if (toAdd) {
       minSubstSet.push_back(subst);

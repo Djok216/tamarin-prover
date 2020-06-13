@@ -44,6 +44,7 @@ vector<int> encodedss;
 int mapperGet(FastTerm term) {
   if (mapper.count(term)) return mapper[term];
   int val = mapperOffset + mapper.size();
+  if (getSort(term) == mapSorts[kSortFresh]) val *= -1;
   return mapper[term] = val;
 }
 
@@ -186,7 +187,7 @@ int* printSubstitutions(int n1, int* a1, int* b1, int* c1, int n2, int* a2, int*
 
   mapperOffset = n1 / 2 + n2 / 2 + 1;
   UnifEqSystem ues;
-  for (int i = 0; i < n1; ++i) {
+  for (int i = 0; i < n1; ++i, ++a1, ++a2, ++b1, ++b2, ++c1, ++c2) {
     int n11 = 0, n22 = 0;
     for (n11 = 0; a1[n11] != kEndOfEncodedTerm; ++n11);
     for (n22 = 0; a2[n22] != kEndOfEncodedTerm; ++n22);
@@ -194,13 +195,10 @@ int* printSubstitutions(int n1, int* a1, int* b1, int* c1, int n2, int* a2, int*
     FastTerm t2 = constructFastTerm(n22, a2, b2, c2);
     while (n11--) ++a1, ++b1, ++c1, ++i;
     while (n22--) ++a2, ++b2, ++c2;
-    cout << "AC-unify: " << toString(t1) << ' ' << toString(t2) << '\n';
     ues.addEq(UnifEq(t1, t2), true);
   }
   FastQueryACUnify solver(0, 0);
   auto substSet = solver.solve(ues);
-  for (auto it : substSet) cout << toString(it) << '\n';
-  cout << "======================================\n";
   encodeSubstSet(substSet);
   ++unifProblemsCounter;
   return encodedss.data();
