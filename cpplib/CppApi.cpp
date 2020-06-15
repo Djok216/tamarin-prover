@@ -89,14 +89,27 @@ FastTerm combineTerms(
   FastFunc f;
   if (existsFunc(name.c_str())) f = getFuncByName(name.c_str());
   else {
-    if (type != kTypeAC) {
-      vector<FastSort> sorts(terms.size());
-      for (int i = 0; i < sorts.size(); ++i) sorts[i] = getSort(terms[i]);
-      f = newFunc(name.c_str(), mapSorts[kSortMsg], terms.size(), &sorts[0]);
-    } else f = newACFunc(name.c_str(), mapSorts[kSortMsg]);
+    switch (type) {
+      case kTypeAC:
+        f = newACFunc(name.c_str(), mapSorts[kSortMsg]);
+        break;
+      case kTypeC:
+        f = newCFunc(name.c_str(), mapSorts[kSortMsg]);
+        break;
+      case kTypeList:
+      case kTypeNoEq: {
+        vector<FastSort> sorts(terms.size());
+        for (int i = 0; i < sorts.size(); ++i) sorts[i] = getSort(terms[i]);
+        f = newFunc(name.c_str(), mapSorts[kSortMsg], terms.size(), &sorts[0]);
+        break;
+      }
+      default:
+        cerr << "WRONG TYPE!\n";
+        exit(1);
+    }
   }
 
-  if (type != kTypeAC) return newFuncTerm(f, &terms[0]);
+  if (type != kTypeAC && type != kTypeC) return newFuncTerm(f, &terms[0]);
   for (int sz = 2; sz / 2 < terms.size(); sz *= 2)
     for (int i = 0; i + sz / 2 < terms.size(); i += sz) {
       FastTerm args[2] = {terms[i], terms[i + sz / 2]};

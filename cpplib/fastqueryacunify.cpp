@@ -377,7 +377,12 @@ vector<FastSubst> FastQueryACUnify::solve(UnifEqSystem ues) {
           break;
         }
         ues.pop_back();
+        auto aux = ues;
         ues.decomp(eq.t1, eq.t2);
+        if (isFuncC(func1)) {
+          aux.decompInverse(eq.t1, eq.t2);
+          q.push(make_pair(aux, subst));
+        }
       }
     }
     // if (toAdd) {
