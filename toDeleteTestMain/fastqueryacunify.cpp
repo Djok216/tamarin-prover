@@ -44,14 +44,20 @@ vector<int> FastQueryACUnify::fromMapToVector(const map<FastTerm, int> &M) {
 }
 
 FastTerm FastQueryACUnify::createFuncWithSameVar(int cnt, FastTerm var, FastFunc f, FastTerm unityElement) {
-  if (!cnt) {
-    return unityElement;
-  }
-  FastTerm ans = var;
-  while (cnt > 1) {
-    FastTerm p[2] = {ans, var};
-    ans = newFuncTerm(f, p);
-    --cnt;
+  if (!cnt) return unityElement;
+  constexpr int kUndefinedTerm = -1;
+  FastTerm ans = kUndefinedTerm;
+  for (int bit = 30; bit >= 0; --bit) {
+    if (ans != kUndefinedTerm) {
+      FastTerm p[2] = {ans, ans};
+      ans = newFuncTerm(f, p);
+    }
+    if ((cnt & (1 << bit)) == 0) continue;
+    if (ans == kUndefinedTerm) ans = var;
+    else {
+      FastTerm p[2] = {ans, var};
+      ans = newFuncTerm(f, p);
+    }
   }
   return ans;
 }
@@ -60,8 +66,9 @@ vector<FastSubst> FastQueryACUnify::solveAC(UnifEq ueq) {
   FastFunc f = getFunc(ueq.t1);
   FastFunc uElemConst = getUnityElement(f);
   FastTerm uElemTerm = newFuncTerm(uElemConst, nullptr);
-  function<void(FastTerm, map<FastTerm, int>&, map<FastTerm, FastTerm>&)> getCoeffs;
-  getCoeffs = [&](FastTerm t, map<FastTerm, int> &M, map<FastTerm, FastTerm> &constToVar) {
+  auto compFastTerms = [](FastTerm a, FastTerm b) { return eq_term(a, b) ? 0 : a < b; };
+  function<void(FastTerm, map<FastTerm, int>&, map<FastTerm, FastTerm, decltype(compFastTerms)>&)> getCoeffs;
+  getCoeffs = [&](FastTerm t, map<FastTerm, int> &M, map<FastTerm, FastTerm, decltype(compFastTerms)> &constToVar) {
     if(isVariable(t)) {
       ++M[t];
       return;
@@ -79,7 +86,7 @@ vector<FastSubst> FastQueryACUnify::solveAC(UnifEq ueq) {
     }
   };
   map<FastTerm, int> l, r;
-  map<FastTerm, FastTerm> constToVar;
+  map<FastTerm, FastTerm, decltype(compFastTerms)> constToVar(compFastTerms);
   getCoeffs(ueq.t1, l, constToVar);
   getCoeffs(ueq.t2, r, constToVar);
   delSameCoeffs(l, r);
@@ -249,7 +256,7 @@ vector<FastSubst> FastQueryACUnify::solve() {
 }
 
 vector<FastSubst> FastQueryACUnify::solve(UnifEqSystem ues) {
-  UnifEqSystem savedUes = ues;
+  auto initUes = ues;
   vector<FastSubst> minSubstSet;
   queue<pair<UnifEqSystem, FastSubst>> q;
   for (q.push(make_pair(ues, FastSubst())); !q.empty(); q.pop()) {
@@ -295,11 +302,30 @@ vector<FastSubst> FastQueryACUnify::solve(UnifEqSystem ues) {
           // cerr << "sort of t1 " << getSortName(getSort(eq.t1)) << endl;
           // cerr << "sort of t2 " << getSortName(getSort(eq.t2)) << endl;
           // cerr << "subsort yes: " << eq.t1 << " " << eq.t2 << endl;
-          subst.composeWith(eq.t1, eq.t2);
-          ues.pop_back();
-          for (auto &it : ues) {
-            it.t1 = applyUnitySubst(it.t1, eq.t1, eq.t2);
-            it.t2 = applyUnitySubst(it.t2, eq.t1, eq.t2);
+          // subst.composeWith(eq.t1, eq.t2);
+          // ues.pop_back();
+          // for (auto &it : ues) {
+          //   it.t1 = applyUnitySubst(it.t1, eq.t1, eq.t2);
+          //   it.t2 = applyUnitySubst(it.t2, eq.t1, eq.t2);
+          // }
+          if (isVariable(eq.t2)) {
+            FastVar newVar = createFreshVariable(getSort(eq.t2));
+            subst.composeWith(eq.t1, newVar);
+            subst.composeWith(eq.t2, newVar);
+            ues.pop_back();
+            for (auto &it : ues) {
+              it.t1 = applyUnitySubst(it.t1, eq.t1, newVar);
+              it.t1 = applyUnitySubst(it.t1, eq.t2, newVar);
+              it.t2 = applyUnitySubst(it.t2, eq.t1, newVar);
+              it.t2 = applyUnitySubst(it.t2, eq.t2, newVar);
+            }
+          } else {
+            subst.composeWith(eq.t1, eq.t2);
+            ues.pop_back();
+            for (auto &it : ues) {
+              it.t1 = applyUnitySubst(it.t1, eq.t1, eq.t2);
+              it.t2 = applyUnitySubst(it.t2, eq.t1, eq.t2);
+            }
           }
           continue;
         } else {
@@ -345,33 +371,37 @@ vector<FastSubst> FastQueryACUnify::solve(UnifEqSystem ues) {
           break;
         }
         if (isFuncAC(func1)) {
-          cout << "solve AC-unify: " << toString(eq.t1) << ' ' << toString(eq.t2) << '\n';
           vector<FastSubst> sols = solveAC(eq);
-          cout << "Unifications: " << sols.size() << '\n';
-          for (auto& it : sols) cout << toString(it) << '\n';
-          cout << "============================================\n";
           ues.pop_back();
-          auto magic = ues;
+          auto syntacticUes = ues;
           for (auto &sol : sols) {
             q.push(make_pair(UnifEqSystem(sol, ues), subst));
           }
-          magic.decomp(eq.t1, eq.t2);
-          q.push(make_pair(magic, subst));
+          syntacticUes.decomp(eq.t1, eq.t2);
+          q.push(make_pair(syntacticUes, subst));
           toAdd = false;
           break;
         }
         ues.pop_back();
+        auto aux = ues;
         ues.decomp(eq.t1, eq.t2);
+        if (isFuncC(func1)) {
+          aux.decompInverse(eq.t1, eq.t2);
+          q.push(make_pair(aux, subst));
+        }
       }
     }
-    if (toAdd) {
-      for (const auto& it : savedUes) 
-        if (!eq_term(subst.applySubst(it.t1), subst.applySubst(it.t2))) {
-          cout << "NOT EQUAL: " << toString(subst.applySubst(it.t1)) << "   ======   " << toString(subst.applySubst(it.t2)) << '\n';
-          toAdd = false;
-          break;
-        }
-    }
+    // if (toAdd) {
+    //   for (auto& it : initUes) {
+    //     auto t1 = subst.applySubst(it.t1);
+    //     auto t2 = subst.applySubst(it.t2);
+    //     if (!eq_term(t1, t2)) {
+    //       cerr << "NOT EQUAL: " << toString(t1) << ' ' << toString(t2) << '\n';
+    //       toAdd = false;
+    //       break;
+    //     }
+    //   }
+    // }
     if (toAdd) {
       minSubstSet.push_back(subst);
     }

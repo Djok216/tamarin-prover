@@ -5,9 +5,7 @@
 #include <cassert>
 #include <cstring>
 #include <map>
-#include "fastterm.h"
-#include "fastqueryacunify.h"
-#include "unifeqsystem.h"
+#include "UnifLib216.h"
 using namespace std;
 
 constexpr int kEndOfEncodedTerm = -5;

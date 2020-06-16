@@ -1,7 +1,6 @@
 #include <iostream>
 #include <map>
-#include "fastterm.h"
-#include "fastqueryacunify.h"
+#include "UnifLib216.h"
 using namespace std;
 
 constexpr int kSortPub = 7;
