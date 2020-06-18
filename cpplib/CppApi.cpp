@@ -219,6 +219,24 @@ int* printSubstitutions(int n1, int* a1, int* b1, int* c1, int n2, int* a2, int*
   }
   FastQueryACUnify solver(0, 0);
   auto substSet = solver.solve(ues);
+  for (auto& subst : substSet) {
+    for (int i = 0; i < subst.count; i += 2) {
+      FastVar var = subst.data[i];
+      if (occurs(var, ues[0].t1)) continue;
+      if (occurs(var, ues[0].t2)) continue;
+      bool flag = false;
+      for (int j = 0; j < subst.count && !flag; j += 2) {
+        if (i == j) continue;
+        if (occurs(var, subst.data[i + 1])) flag = true;
+      }
+      if (flag == false) {
+        swap(subst.data[i], subst.data[subst.count - 2]);
+        swap(subst.data[i + 1], subst.data[subst.count - 1]);
+        subst.count -= 2;
+        i -= 2;
+      }
+    }
+  }
   encodeSubstSet(substSet);
   ++unifProblemsCounter;
   return encodedss.data();

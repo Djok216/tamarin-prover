@@ -383,14 +383,15 @@ combineTerms (LIT a, _) = LIT a
 
 constructTermFromPreorder
     :: (IsConst c)
-    => M.Map CInt (VTerm c LVar)
+    => Integer
+    -> M.Map CInt (VTerm c LVar)
     -> [(VTerm c LVar, [VTerm c LVar])]
     -> [CInt]
     -> VTerm c LVar
-constructTermFromPreorder _ _ [] = error "Construct Term From Preorder Error"
-constructTermFromPreorder _ (y:[]) (-1:_) = combineTerms y
-constructTermFromPreorder _ stk (-1:[]) = combineTerms $ head stk
-constructTermFromPreorder mapper [] (x:(-1):_) =
+constructTermFromPreorder _ _ _ [] = error "Construct Term From Preorder Error"
+constructTermFromPreorder _ _ (y:[]) (-1:_) = combineTerms y
+constructTermFromPreorder _ _ stk (-1:[]) = combineTerms $ head stk
+constructTermFromPreorder indMax mapper [] (x:(-1):_) =
     if M.member key mapper then 
       case M.lookup key mapper of
         (Just a) -> a
@@ -399,16 +400,16 @@ constructTermFromPreorder mapper [] (x:(-1):_) =
   where
     key = abs x
     varSort = if x > -1 then LSortMsg else LSortFresh
-    freshVar = LIT $ Var $ LVar "_x" varSort $ toInteger key
-constructTermFromPreorder mapper stk (-1:xs) = 
-    constructTermFromPreorder mapper nstk xs
+    freshVar = LIT $ Var $ LVar "_x" varSort $ (indMax + 100000 + (toInteger key))
+constructTermFromPreorder indMax mapper stk (-1:xs) = 
+    constructTermFromPreorder indMax mapper nstk xs
   where
     (y:ys) = stk
     t = combineTerms y
     (z:zs) = ys
     nstk = (fst z, (snd z) ++ [t]) : zs
-constructTermFromPreorder mapper [] (x:xs) = 
-    constructTermFromPreorder mapper nstkFAPP xs
+constructTermFromPreorder indMax mapper [] (x:xs) = 
+    constructTermFromPreorder indMax mapper nstkFAPP xs
   where
     key = abs x
     root =
@@ -418,12 +419,12 @@ constructTermFromPreorder mapper [] (x:xs) =
           _ -> error "something is wrong"
       else freshVar
     varSort = if x > -1 then LSortMsg else LSortFresh
-    freshVar = LIT $ Var $ LVar "_x" varSort $ toInteger key
+    freshVar = LIT $ Var $ LVar "_x" varSort $ (indMax + 100000 + toInteger key)
     nstkFAPP = [(root, [])]
-constructTermFromPreorder mapper stk (x:xs) = 
+constructTermFromPreorder indMax mapper stk (x:xs) = 
     case root of
-      (LIT _) -> constructTermFromPreorder mapper nstkLIT $ tail xs
-      _ -> constructTermFromPreorder mapper nstkFAPP xs
+      (LIT _) -> constructTermFromPreorder indMax mapper nstkLIT $ tail xs
+      _ -> constructTermFromPreorder indMax mapper nstkFAPP xs
   where
     key = abs x
     root =
@@ -433,19 +434,20 @@ constructTermFromPreorder mapper stk (x:xs) =
           _ -> error "something is wrong"
       else freshVar
     varSort = if x > -1 then LSortMsg else LSortFresh
-    freshVar = LIT $ Var $ LVar "_x" varSort $ toInteger key
+    freshVar = LIT $ Var $ LVar "_x" varSort $ (indMax + 100000 + (toInteger key))
     (y:ys) = stk
     nstkLIT = (fst y, (snd y) ++ [root]) : ys
     nstkFAPP = (root, []) : stk
 
 applyMapper
     :: (IsConst c)
-    => M.Map CInt (VTerm c LVar)
+    => Integer
+    -> M.Map CInt (VTerm c LVar)
     -> [(CInt, [CInt])]
     -> [(LVar, VTerm c LVar)]
-applyMapper _ [] = []
-applyMapper mapper (x:xs) = 
-    (var, term) : applyMapper mapper xs
+applyMapper _ _ [] = []
+applyMapper indMax mapper (x:xs) = 
+    (var, term) : applyMapper indMax mapper xs
   where
     key = abs $ fst x
     var =
@@ -455,20 +457,31 @@ applyMapper mapper (x:xs) =
           _ -> error "something is wrong"
       else freshVar
     varSort = if fst x > -1 then LSortMsg else LSortFresh
-    freshVar = LVar "_x" varSort (toInteger $ key)
-    term = constructTermFromPreorder mapper [] (snd x)
+    freshVar = LVar "_x" varSort (indMax + 100000 + (toInteger $ key))
+    term = constructTermFromPreorder indMax mapper [] (snd x)
 
 decodeSubst 
     :: (IsConst c)
-    => M.Map CInt (VTerm c LVar) 
+    => Integer
+    -> M.Map CInt (VTerm c LVar) 
     -> [[CInt]]
     -> [(LVar, VTerm c LVar)]
-decodeSubst mapper x =
-    applyMapper mapper subst
+decodeSubst indMax mapper x =
+    applyMapper indMax mapper subst
   where
     splitListFunc [] = error "something is wrong"
     splitListFunc (y:ys) = (y, ys)
     subst = map splitListFunc x
+
+getIndMax
+    :: (IsConst c)
+    => [(VTerm c LVar, CInt)]
+    -> Integer
+getIndMax [] = 0
+getIndMax (x:xs) = 
+    case fst x of
+      (LIT (Var (LVar {lvarName=_, lvarSort=_, lvarIdx=index}))) -> max index $ getIndMax xs
+      _ -> getIndMax xs
 
 -- | @unifyViaMaude hnd eqs@ computes all AC unifiers of @eqs@ using the
 --   Maude process @hnd@.
@@ -482,21 +495,47 @@ unifyViaMaude hnd sortOf eqs =
     ptrSubstSet <- cppFuncCall lhsPreorder lhsTypes lhsSorts rhsPreorder rhsTypes rhsSorts
     substSetEncoded <- peekArray0 (-4 :: CInt) ptrSubstSet
     let encodedSubstsList = map (splitSubsts (-3 :: CInt) []) $ splitSubsts (-2 :: CInt) [] substSetEncoded
-    let listSubst = map (decodeSubst invMapper) encodedSubstsList
+    let listSubst = map (decodeSubst indMax invMapper) encodedSubstsList
     let listVFreshSubst = map removeRenamings $ map substFromListVFresh listSubst
-    let generalUnifier = [x | x <- listVFreshSubst, (M.size $ svMap x) > 0]
+    let generalUnifier = listVFreshSubst
     x <- computeViaMaude hnd incUnifCount toMaude fromMaude eqs
-    -- putStrLn "+++++++++++++++++++++++++++++++"
-    -- print $ "####### " ++ (show $ length generalUnifier)
-    -- print $ "@@@@@@@ " ++ (show $ length x)
-    -- print generalUnifier
-    -- print x
-    -- putStrLn "_______________________________"
+    putStrLn "+++++++++++++++++++++++++++++++"
+    print $ "!!!!!!! " ++ (show $ length generalUnifier)
+    print $ "@@@@@@@ " ++ (show $ length x)
+    print eqs
+    print generalUnifier
+    print x
+    print indMax
+    print mapper
+    putStrLn "_______________________________"
     --error "ceva"
     return generalUnifier
-    --return x
+    -- let ans = case show eqs of
+    --         "[Equal {eqLHS = Xor(BBr0.6,AAr1.7,h(AAk0.8)), eqRHS = Xor(BBr1.1,AAr0.1,h(AAk0.2))}]" -> generalUnifier
+    --         "[Equal {eqLHS = Xor(BBr0.6,AAr1.7,h(AAk0.8)), eqRHS = Xor(BBr1.1,h(AAk0.2))}]" -> x
+    --         "[Equal {eqLHS = Xor(BBr0.6,AAr1.7,h(AAk0.8)), eqRHS = Xor(BBr1.1,AAx.161)}]" -> x
+    --         "[Equal {eqLHS = Xor(BBr0.6,AAr1.7,h(AAk0.8)), eqRHS = Xor(AAx.162,h(AAk0.2))}]" -> x
+    --         "[Equal {eqLHS = Xor(BBr0.6,h(AAk0.7)), eqRHS = Xor(BBr1.1,AAr0.1,h(AAk0.2))}]" -> x
+    --         "[Equal {eqLHS = Xor(BBr0.6,h(AAk0.7)), eqRHS = Xor(BBr1.1,h(AAk0.2))}]" -> x
+    --         "[Equal {eqLHS = Xor(BBr0.6,h(AAk0.7)), eqRHS = Xor(BBr1.1,AAx.160)}]" -> x
+    --         "[Equal {eqLHS = Xor(BBr0.6,h(AAk0.7)), eqRHS = Xor(AAx.161,h(AAk0.2))}]" -> x
+    --         "[Equal {eqLHS = Xor(BBr0.6,AAx.7), eqRHS = Xor(BBr1.1,AAr0.1,h(AAk0.2))}]" -> x
+    --         "[Equal {eqLHS = Xor(BBr0.6,AAx.7), eqRHS = Xor(BBr1.1,h(AAk0.2))}]" -> x
+    --         "[Equal {eqLHS = Xor(BBr0.6,AAx.7), eqRHS = Xor(BBr1.1,AAx.160)}]" -> x
+    --         "[Equal {eqLHS = Xor(BBr0.6,AAx.7), eqRHS = Xor(AAx.161,h(AAk0.2))}]" -> x
+    --         "[Equal {eqLHS = Xor(BBr0.6,AAx.8), eqRHS = Xor(BBr1.1,AAr0.1,h(AAk0.2))}]" -> x
+    --         "[Equal {eqLHS = Xor(BBr0.6,AAx.8), eqRHS = Xor(BBr1.1,h(AAk0.2))}]" -> x
+    --         "[Equal {eqLHS = Xor(BBr0.6,AAx.8), eqRHS = Xor(BBr1.1,AAx.161)}]" -> x
+    --         "[Equal {eqLHS = Xor(BBr0.6,AAx.8), eqRHS = Xor(AAx.162,h(AAk0.2))}]" -> x
+    --         "[Equal {eqLHS = Xor(AAx.8,h(AAk0.7)), eqRHS = Xor(BBr1.1,AAr0.1,h(AAk0.2))}]" -> x
+    --         "[Equal {eqLHS = Xor(AAx.8,h(AAk0.7)), eqRHS = Xor(BBr1.1,h(AAk0.2))}]" -> x
+    --         "[Equal {eqLHS = Xor(AAx.8,h(AAk0.7)), eqRHS = Xor(BBr1.1,AAx.161)}]" -> x
+    --         "[Equal {eqLHS = Xor(AAx.8,h(AAk0.7)), eqRHS = Xor(AAx.162,h(AAk0.2))}]" -> x
+    --         _ -> x
+    -- return ans
   where
     mapper = getMapper eqs
+    indMax = getIndMax $ M.toList mapper
     invMapper = M.fromList $ map (\(x, y) -> (y, x)) $ M.toList mapper
     (lhsPreorder, lhsTypes, lhsSorts) = getPreorder sortOf mapper invMapper $ map (\x -> eqLHS x) eqs
     (rhsPreorder, rhsTypes, rhsSorts) = getPreorder sortOf mapper invMapper $ map (\x -> eqRHS x) eqs
