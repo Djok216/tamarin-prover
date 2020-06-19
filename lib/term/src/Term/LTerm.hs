@@ -172,10 +172,10 @@ sortCompare s1 s2 = case (s1, s2) of
 
 -- | @sortPrefix s@ is the prefix we use for annotating variables of sort @s@.
 sortPrefix :: LSort -> String
-sortPrefix LSortMsg   = ""
-sortPrefix LSortFresh = "~"
-sortPrefix LSortPub   = "$"
-sortPrefix LSortNode  = "#"
+sortPrefix LSortMsg   = "AA"
+sortPrefix LSortFresh = "BB"
+sortPrefix LSortPub   = "CC"
+sortPrefix LSortNode  = "DD"
 
 -- | @sortSuffix s@ is the suffix we use for annotating variables of sort @s@.
 sortSuffix :: LSort -> String

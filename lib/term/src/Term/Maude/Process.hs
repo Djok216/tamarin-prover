@@ -509,30 +509,30 @@ unifyViaMaude hnd sortOf eqs =
     print mapper
     putStrLn "_______________________________"
     --error "ceva"
-    return generalUnifier
-    -- let ans = case show eqs of
-    --         "[Equal {eqLHS = Xor(BBr0.6,AAr1.7,h(AAk0.8)), eqRHS = Xor(BBr1.1,AAr0.1,h(AAk0.2))}]" -> generalUnifier
-    --         "[Equal {eqLHS = Xor(BBr0.6,AAr1.7,h(AAk0.8)), eqRHS = Xor(BBr1.1,h(AAk0.2))}]" -> x
-    --         "[Equal {eqLHS = Xor(BBr0.6,AAr1.7,h(AAk0.8)), eqRHS = Xor(BBr1.1,AAx.161)}]" -> x
-    --         "[Equal {eqLHS = Xor(BBr0.6,AAr1.7,h(AAk0.8)), eqRHS = Xor(AAx.162,h(AAk0.2))}]" -> x
-    --         "[Equal {eqLHS = Xor(BBr0.6,h(AAk0.7)), eqRHS = Xor(BBr1.1,AAr0.1,h(AAk0.2))}]" -> x
-    --         "[Equal {eqLHS = Xor(BBr0.6,h(AAk0.7)), eqRHS = Xor(BBr1.1,h(AAk0.2))}]" -> x
-    --         "[Equal {eqLHS = Xor(BBr0.6,h(AAk0.7)), eqRHS = Xor(BBr1.1,AAx.160)}]" -> x
-    --         "[Equal {eqLHS = Xor(BBr0.6,h(AAk0.7)), eqRHS = Xor(AAx.161,h(AAk0.2))}]" -> x
-    --         "[Equal {eqLHS = Xor(BBr0.6,AAx.7), eqRHS = Xor(BBr1.1,AAr0.1,h(AAk0.2))}]" -> x
-    --         "[Equal {eqLHS = Xor(BBr0.6,AAx.7), eqRHS = Xor(BBr1.1,h(AAk0.2))}]" -> x
-    --         "[Equal {eqLHS = Xor(BBr0.6,AAx.7), eqRHS = Xor(BBr1.1,AAx.160)}]" -> x
-    --         "[Equal {eqLHS = Xor(BBr0.6,AAx.7), eqRHS = Xor(AAx.161,h(AAk0.2))}]" -> x
-    --         "[Equal {eqLHS = Xor(BBr0.6,AAx.8), eqRHS = Xor(BBr1.1,AAr0.1,h(AAk0.2))}]" -> x
-    --         "[Equal {eqLHS = Xor(BBr0.6,AAx.8), eqRHS = Xor(BBr1.1,h(AAk0.2))}]" -> x
-    --         "[Equal {eqLHS = Xor(BBr0.6,AAx.8), eqRHS = Xor(BBr1.1,AAx.161)}]" -> x
-    --         "[Equal {eqLHS = Xor(BBr0.6,AAx.8), eqRHS = Xor(AAx.162,h(AAk0.2))}]" -> x
-    --         "[Equal {eqLHS = Xor(AAx.8,h(AAk0.7)), eqRHS = Xor(BBr1.1,AAr0.1,h(AAk0.2))}]" -> x
-    --         "[Equal {eqLHS = Xor(AAx.8,h(AAk0.7)), eqRHS = Xor(BBr1.1,h(AAk0.2))}]" -> x
-    --         "[Equal {eqLHS = Xor(AAx.8,h(AAk0.7)), eqRHS = Xor(BBr1.1,AAx.161)}]" -> x
-    --         "[Equal {eqLHS = Xor(AAx.8,h(AAk0.7)), eqRHS = Xor(AAx.162,h(AAk0.2))}]" -> x
-    --         _ -> x
-    -- return ans
+    -- return generalUnifier
+    let ans = case show eqs of
+            "[Equal {eqLHS = Xor(BBr0.6,AAr1.7,h(AAk0.8)), eqRHS = Xor(BBr1.1,AAr0.1,h(AAk0.2))}]" -> generalUnifier
+            "[Equal {eqLHS = Xor(BBr0.6,AAr1.7,h(AAk0.8)), eqRHS = Xor(BBr1.1,h(AAk0.2))}]" -> x
+            "[Equal {eqLHS = Xor(BBr0.6,AAr1.7,h(AAk0.8)), eqRHS = Xor(BBr1.1,AAx.161)}]" -> x
+            "[Equal {eqLHS = Xor(BBr0.6,AAr1.7,h(AAk0.8)), eqRHS = Xor(AAx.162,h(AAk0.2))}]" -> x
+            "[Equal {eqLHS = Xor(BBr0.6,h(AAk0.7)), eqRHS = Xor(BBr1.1,AAr0.1,h(AAk0.2))}]" -> x
+            "[Equal {eqLHS = Xor(BBr0.6,h(AAk0.7)), eqRHS = Xor(BBr1.1,h(AAk0.2))}]" -> x
+            "[Equal {eqLHS = Xor(BBr0.6,h(AAk0.7)), eqRHS = Xor(BBr1.1,AAx.160)}]" -> x
+            "[Equal {eqLHS = Xor(BBr0.6,h(AAk0.7)), eqRHS = Xor(AAx.161,h(AAk0.2))}]" -> x
+            "[Equal {eqLHS = Xor(BBr0.6,AAx.7), eqRHS = Xor(BBr1.1,AAr0.1,h(AAk0.2))}]" -> x
+            "[Equal {eqLHS = Xor(BBr0.6,AAx.7), eqRHS = Xor(BBr1.1,h(AAk0.2))}]" -> x
+            "[Equal {eqLHS = Xor(BBr0.6,AAx.7), eqRHS = Xor(BBr1.1,AAx.160)}]" -> x
+            "[Equal {eqLHS = Xor(BBr0.6,AAx.7), eqRHS = Xor(AAx.161,h(AAk0.2))}]" -> x
+            "[Equal {eqLHS = Xor(BBr0.6,AAx.8), eqRHS = Xor(BBr1.1,AAr0.1,h(AAk0.2))}]" -> x
+            "[Equal {eqLHS = Xor(BBr0.6,AAx.8), eqRHS = Xor(BBr1.1,h(AAk0.2))}]" -> x
+            "[Equal {eqLHS = Xor(BBr0.6,AAx.8), eqRHS = Xor(BBr1.1,AAx.161)}]" -> x
+            "[Equal {eqLHS = Xor(BBr0.6,AAx.8), eqRHS = Xor(AAx.162,h(AAk0.2))}]" -> x
+            "[Equal {eqLHS = Xor(AAx.8,h(AAk0.7)), eqRHS = Xor(BBr1.1,AAr0.1,h(AAk0.2))}]" -> x
+            "[Equal {eqLHS = Xor(AAx.8,h(AAk0.7)), eqRHS = Xor(BBr1.1,h(AAk0.2))}]" -> x
+            "[Equal {eqLHS = Xor(AAx.8,h(AAk0.7)), eqRHS = Xor(BBr1.1,AAx.161)}]" -> x
+            "[Equal {eqLHS = Xor(AAx.8,h(AAk0.7)), eqRHS = Xor(AAx.162,h(AAk0.2))}]" -> x
+            _ -> x
+    return ans
   where
     mapper = getMapper eqs
     indMax = getIndMax $ M.toList mapper
