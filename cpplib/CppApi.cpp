@@ -206,9 +206,9 @@ int* printSubstitutions(int n1, int* a1, int* b1, int* c1, int n2, int* a2, int*
     newSubSort(mapSorts[kSortFresh], mapSorts[kSortMsg]);
     newSubSort(mapSorts[kSortPub], mapSorts[kSortMsg]);
   }
-  // vector<FastSubst> aasdadasd;
-  // encodeSubstSet(aasdadasd);
-  // if (unifProblemsCounter > 0) return encodedss.data();
+  vector<FastSubst> aasdadasd;
+  encodeSubstSet(aasdadasd);
+  if (unifProblemsCounter > 0) return encodedss.data();
   UnifEqSystem ues;
   for (int i = 0; i < n1; ++i, ++a1, ++a2, ++b1, ++b2, ++c1, ++c2) {
     int n11 = 0, n22 = 0;
@@ -220,86 +220,85 @@ int* printSubstitutions(int n1, int* a1, int* b1, int* c1, int n2, int* a2, int*
     while (n22--) ++a2, ++b2, ++c2;
     ues.addEq(UnifEq(t1, t2), true);
   }
+  vector<FastSubst> fakeSubst;
+  // {BBx.10 <~ HsVar4#0, HsACf0#0(AAx.9,BBx.12,HsNoEqf1#0(AAx.13)) <~ HsVar3#0, AAx.11 <~ HsVar2#0, BBx.12 <~ HsVar7#0, HsACf0#0(AAx.9,BBx.10,HsNoEqf1#0(AAx.11)) <~ HsVar6#0, AAx.13 <~ HsVar5#0}
+  FastTerm args[2];
+  FastVar bbx10 = createFreshVariable(mapSorts[kSortFresh]); mapper[bbx10] = -10;
+  FastVar aax9 = createFreshVariable(mapSorts[kSortMsg]); mapper[aax9] = 9;
+  FastVar bbx12 = createFreshVariable(mapSorts[kSortFresh]); mapper[bbx12] = -12;
+  FastVar aax13 = createFreshVariable(mapSorts[kSortMsg]); mapper[aax13] = 13;
+  FastVar aax11 = createFreshVariable(mapSorts[kSortMsg]); mapper[aax11] = 11;
+  FastVar aax10 = createFreshVariable(mapSorts[kSortMsg]); mapper[aax10] = 10;
+  FastVar aax12 = createFreshVariable(mapSorts[kSortMsg]); mapper[aax12] = 12;
+  FastVar bbx11 = createFreshVariable(mapSorts[kSortFresh]); mapper[bbx11] = -11;
+  FastVar bbx9 = createFreshVariable(mapSorts[kSortFresh]); mapper[bbx9] = -9;
+  FastFunc h = getFuncByName("HsNoEqf1#0");
+  FastFunc Xor = getFuncByName("HsACf0#0");
+  fakeSubst.emplace_back(FastSubst());
+  fakeSubst.back().addToSubst(getVarByName("HsVar4#0"), bbx10);
+  args[0] = aax9; args[1] = bbx12; FastTerm aux = newFuncTerm(Xor, args); args[0] = aax13; FastTerm haax13 = newFuncTerm(h, args); args[0] = aux; args[1] = haax13; aux = newFuncTerm(Xor, args); fakeSubst.back().addToSubst(getVarByName("HsVar3#0"), aux);
+  fakeSubst.back().addToSubst(getVarByName("HsVar2#0"), aax11);
+  fakeSubst.back().addToSubst(getVarByName("HsVar7#0"), bbx12);
+  args[0] = aax9; args[1] = bbx10; aux = newFuncTerm(Xor, args); args[0] = aax11; FastTerm haax11 = newFuncTerm(h, args); args[0] = aux; args[1] = haax11; aux = newFuncTerm(Xor, args); fakeSubst.back().addToSubst(getVarByName("HsVar6#0"), aux);
+  fakeSubst.back().addToSubst(getVarByName("HsVar5#0"), aax13);
 
-  // vector<FastSubst> fakeSubst;
-  // // {BBx.10 <~ HsVar4#0, HsACf0#0(AAx.9,BBx.12,HsNoEqf1#0(AAx.13)) <~ HsVar3#0, AAx.11 <~ HsVar2#0, BBx.12 <~ HsVar7#0, HsACf0#0(AAx.9,BBx.10,HsNoEqf1#0(AAx.11)) <~ HsVar6#0, AAx.13 <~ HsVar5#0}
-  // FastTerm args[2];
-  // FastVar bbx10 = createFreshVariable(mapSorts[kSortFresh]);
-  // FastVar aax9 = createFreshVariable(mapSorts[kSortMsg]);
-  // FastVar bbx12 = createFreshVariable(mapSorts[kSortFresh]);
-  // FastVar aax13 = createFreshVariable(mapSorts[kSortMsg]);
-  // FastVar aax11 = createFreshVariable(mapSorts[kSortMsg]);
-  // FastVar aax10 = createFreshVariable(mapSorts[kSortMsg]);
-  // FastVar aax12 = createFreshVariable(mapSorts[kSortMsg]);
-  // FastVar bbx11 = createFreshVariable(mapSorts[kSortFresh]);
-  // FastVar bbx9 = createFreshVariable(mapSorts[kSortFresh]);
-  // FastFunc h = getFuncByName("HsNoEqf1#0");
-  // FastFunc Xor = getFuncByName("HsACf0#0");
-  // fakeSubst.emplace_back(FastSubst());
-  // fakeSubst.back().addToSubst(getVarByName("HsVar4#0"), bbx10);
-  // args[0] = aax9; args[1] = bbx12; FastTerm aux = newFuncTerm(Xor, args); args[0] = aax13; FastTerm haax13 = newFuncTerm(h, args); args[0] = aux; args[1] = haax13; aux = newFuncTerm(Xor, args); fakeSubst.back().addToSubst(getVarByName("HsVar3#0"), aux);
-  // fakeSubst.back().addToSubst(getVarByName("HsVar2#0"), aax11);
-  // fakeSubst.back().addToSubst(getVarByName("HsVar7#0"), bbx12);
-  // args[0] = aax9; args[1] = bbx10; aux = newFuncTerm(Xor, args); args[0] = aax11; FastTerm haax11 = newFuncTerm(h, args); args[0] = aux; args[1] = haax11; aux = newFuncTerm(Xor, args); fakeSubst.back().addToSubst(getVarByName("HsVar6#0"), aux);
-  // fakeSubst.back().addToSubst(getVarByName("HsVar5#0"), aax13);
+  // {BBx.10 <~ HsVar4#0, HsACf0#0(AAx.9,BBx.11) <~ HsVar3#0, AAx.12 <~ HsVar2#0, BBx.11 <~ HsVar7#0, HsACf0#0(AAx.9,BBx.10) <~ HsVar6#0, AAx.12 <~ HsVar5#0}
+  fakeSubst.emplace_back(FastSubst());
+  fakeSubst.back().addToSubst(getVarByName("HsVar4#0"), bbx10);
+  args[0] = aax9; args[1] = bbx11; aux = newFuncTerm(Xor, args); fakeSubst.back().addToSubst(getVarByName("HsVar3#0"), aux);
+  fakeSubst.back().addToSubst(getVarByName("HsVar2#0"), aax12);
+  fakeSubst.back().addToSubst(getVarByName("HsVar7#0"), bbx11);
+  args[0] = aax9; args[1] = bbx10; aux = newFuncTerm(Xor, args); fakeSubst.back().addToSubst(getVarByName("HsVar6#0"), aux);
+  fakeSubst.back().addToSubst(getVarByName("HsVar5#0"), aax12);
 
-  // // {BBx.10 <~ HsVar4#0, HsACf0#0(AAx.9,BBx.11) <~ HsVar3#0, AAx.12 <~ HsVar2#0, BBx.11 <~ HsVar7#0, HsACf0#0(AAx.9,BBx.10) <~ HsVar6#0, AAx.12 <~ HsVar5#0}
-  // fakeSubst.emplace_back(FastSubst());
-  // fakeSubst.back().addToSubst(getVarByName("HsVar4#0"), bbx10);
-  // args[0] = aax9; args[1] = bbx11; aux = newFuncTerm(Xor, args); fakeSubst.back().addToSubst(getVarByName("HsVar3#0"), aux);
-  // fakeSubst.back().addToSubst(getVarByName("HsVar2#0"), aax12);
-  // fakeSubst.back().addToSubst(getVarByName("HsVar7#0"), bbx11);
-  // args[0] = aax9; args[1] = bbx10; aux = newFuncTerm(Xor, args); fakeSubst.back().addToSubst(getVarByName("HsVar6#0"), aux);
-  // fakeSubst.back().addToSubst(getVarByName("HsVar5#0"), aax12);
+  // {BBx.11 <~ HsVar4#0, HsACf0#0(AAx.9,HsNoEqf1#0(AAx.12)) <~ HsVar3#0, AAx.10 <~ HsVar2#0, BBx.11 <~ HsVar7#0, HsACf0#0(AAx.9,HsNoEqf1#0(AAx.10)) <~ HsVar6#0, AAx.12 <~ HsVar5#0}
+  fakeSubst.emplace_back(FastSubst());
+  fakeSubst.back().addToSubst(getVarByName("HsVar4#0"), bbx11);
+  args[0] = aax12; aux = newFuncTerm(h, args); args[0] = aax9; args[1] = aux; aux = newFuncTerm(Xor, args); fakeSubst.back().addToSubst(getVarByName("HsVar3#0"), aux);
+  fakeSubst.back().addToSubst(getVarByName("HsVar2#0"), aax10);
+  fakeSubst.back().addToSubst(getVarByName("HsVar7#0"), bbx11);
+  args[0] = aax10; aux = newFuncTerm(h, args); args[0] = aax9; args[1] = aux; aux = newFuncTerm(Xor, args); fakeSubst.back().addToSubst(getVarByName("HsVar6#0"), aux);
+  fakeSubst.back().addToSubst(getVarByName("HsVar5#0"), aax12);
 
-  // // {BBx.11 <~ HsVar4#0, HsACf0#0(AAx.9,HsNoEqf1#0(AAx.12)) <~ HsVar3#0, AAx.10 <~ HsVar2#0, BBx.11 <~ HsVar7#0, HsACf0#0(AAx.9,HsNoEqf1#0(AAx.10)) <~ HsVar6#0, AAx.12 <~ HsVar5#0}
-  // fakeSubst.emplace_back(FastSubst());
-  // fakeSubst.back().addToSubst(getVarByName("HsVar4#0"), bbx11);
-  // args[0] = aax12; aux = newFuncTerm(h, args); args[0] = aax9; args[1] = aux; aux = newFuncTerm(Xor, args); fakeSubst.back().addToSubst(getVarByName("HsVar3#0"), aux);
-  // fakeSubst.back().addToSubst(getVarByName("HsVar2#0"), aax10);
-  // fakeSubst.back().addToSubst(getVarByName("HsVar7#0"), bbx11);
-  // args[0] = aax10; aux = newFuncTerm(h, args); args[0] = aax9; args[1] = aux; aux = newFuncTerm(Xor, args); fakeSubst.back().addToSubst(getVarByName("HsVar6#0"), aux);
-  // fakeSubst.back().addToSubst(getVarByName("HsVar5#0"), aax12);
+  // {BBx.10 <~ HsVar4#0, AAx.9 <~ HsVar3#0, AAx.11 <~ HsVar2#0, BBx.10 <~ HsVar7#0, AAx.9 <~ HsVar6#0, AAx.11 <~ HsVar5#0}
+  fakeSubst.emplace_back(FastSubst());
+  fakeSubst.back().addToSubst(getVarByName("HsVar4#0"), bbx10);
+  fakeSubst.back().addToSubst(getVarByName("HsVar3#0"), aax9);
+  fakeSubst.back().addToSubst(getVarByName("HsVar2#0"), aax11);
+  fakeSubst.back().addToSubst(getVarByName("HsVar7#0"), bbx10);
+  fakeSubst.back().addToSubst(getVarByName("HsVar6#0"), aax9);
+  fakeSubst.back().addToSubst(getVarByName("HsVar5#0"), aax11);
 
-  // // {BBx.10 <~ HsVar4#0, AAx.9 <~ HsVar3#0, AAx.11 <~ HsVar2#0, BBx.10 <~ HsVar7#0, AAx.9 <~ HsVar6#0, AAx.11 <~ HsVar5#0}
-  // fakeSubst.emplace_back(FastSubst());
-  // fakeSubst.back().addToSubst(getVarByName("HsVar4#0"), bbx10);
-  // fakeSubst.back().addToSubst(getVarByName("HsVar3#0"), aax9);
-  // fakeSubst.back().addToSubst(getVarByName("HsVar2#0"), aax11);
-  // fakeSubst.back().addToSubst(getVarByName("HsVar7#0"), bbx10);
-  // fakeSubst.back().addToSubst(getVarByName("HsVar6#0"), aax9);
-  // fakeSubst.back().addToSubst(getVarByName("HsVar5#0"), aax11);
-
-  // // {BBx.9 <~ HsVar4#0, HsACf0#0(BBx.11,HsNoEqf1#0(AAx.12)) <~ HsVar3#0, AAx.10 <~ HsVar2#0, BBx.11 <~ HsVar7#0, HsACf0#0(BBx.9,HsNoEqf1#0(AAx.10)) <~ HsVar6#0, AAx.12 <~ HsVar5#0}
-  // fakeSubst.emplace_back(FastSubst());
-  // fakeSubst.back().addToSubst(getVarByName("HsVar4#0"), bbx9);
-  // args[0] = aax12; aux = newFuncTerm(h, args); args[0] = bbx11; args[1] = aux; aux = newFuncTerm(Xor, args); fakeSubst.back().addToSubst(getVarByName("HsVar3#0"), aux);
-  // fakeSubst.back().addToSubst(getVarByName("HsVar2#0"), aax10);
-  // fakeSubst.back().addToSubst(getVarByName("HsVar7#0"), bbx11);
-  // args[0] = aax10; aux = newFuncTerm(h, args); args[0] = bbx9; args[1] = aux; aux = newFuncTerm(Xor, args); fakeSubst.back().addToSubst(getVarByName("HsVar6#0"), aux);
-  // fakeSubst.back().addToSubst(getVarByName("HsVar5#0"), aax12);
+  // {BBx.9 <~ HsVar4#0, HsACf0#0(BBx.11,HsNoEqf1#0(AAx.12)) <~ HsVar3#0, AAx.10 <~ HsVar2#0, BBx.11 <~ HsVar7#0, HsACf0#0(BBx.9,HsNoEqf1#0(AAx.10)) <~ HsVar6#0, AAx.12 <~ HsVar5#0}
+  fakeSubst.emplace_back(FastSubst());
+  fakeSubst.back().addToSubst(getVarByName("HsVar4#0"), bbx9);
+  args[0] = aax12; aux = newFuncTerm(h, args); args[0] = bbx11; args[1] = aux; aux = newFuncTerm(Xor, args); fakeSubst.back().addToSubst(getVarByName("HsVar3#0"), aux);
+  fakeSubst.back().addToSubst(getVarByName("HsVar2#0"), aax10);
+  fakeSubst.back().addToSubst(getVarByName("HsVar7#0"), bbx11);
+  args[0] = aax10; aux = newFuncTerm(h, args); args[0] = bbx9; args[1] = aux; aux = newFuncTerm(Xor, args); fakeSubst.back().addToSubst(getVarByName("HsVar6#0"), aux);
+  fakeSubst.back().addToSubst(getVarByName("HsVar5#0"), aax12);
   
-  // // {BBx.9 <~ HsVar4#0, BBx.10 <~ HsVar3#0, AAx.11 <~ HsVar2#0, BBx.10 <~ HsVar7#0, BBx.9 <~ HsVar6#0, AAx.11 <~ HsVar5#0}
-  // fakeSubst.emplace_back(FastSubst());
-  // fakeSubst.back().addToSubst(getVarByName("HsVar4#0"), bbx9);
-  // fakeSubst.back().addToSubst(getVarByName("HsVar3#0"), bbx10);
-  // fakeSubst.back().addToSubst(getVarByName("HsVar2#0"), aax11);
-  // fakeSubst.back().addToSubst(getVarByName("HsVar7#0"), bbx10);
-  // fakeSubst.back().addToSubst(getVarByName("HsVar6#0"), bbx9);
-  // fakeSubst.back().addToSubst(getVarByName("HsVar5#0"), aax11);
+  // {BBx.9 <~ HsVar4#0, BBx.10 <~ HsVar3#0, AAx.11 <~ HsVar2#0, BBx.10 <~ HsVar7#0, BBx.9 <~ HsVar6#0, AAx.11 <~ HsVar5#0}
+  fakeSubst.emplace_back(FastSubst());
+  fakeSubst.back().addToSubst(getVarByName("HsVar4#0"), bbx9);
+  fakeSubst.back().addToSubst(getVarByName("HsVar3#0"), bbx10);
+  fakeSubst.back().addToSubst(getVarByName("HsVar2#0"), aax11);
+  fakeSubst.back().addToSubst(getVarByName("HsVar7#0"), bbx10);
+  fakeSubst.back().addToSubst(getVarByName("HsVar6#0"), bbx9);
+  fakeSubst.back().addToSubst(getVarByName("HsVar5#0"), aax11);
 
-  // // {BBx.10 <~ HsVar4#0, HsNoEqf1#0(AAx.11) <~ HsVar3#0, AAx.9 <~ HsVar2#0, BBx.10 <~ HsVar7#0, HsNoEqf1#0(AAx.9) <~ HsVar6#0, AAx.11 <~ HsVar5#0}]
-  // fakeSubst.emplace_back(FastSubst());
-  // fakeSubst.back().addToSubst(getVarByName("HsVar4#0"), bbx10);
-  // args[0] = aax11; aux = newFuncTerm(h, args); fakeSubst.back().addToSubst(getVarByName("HsVar3#0"), aux);
-  // fakeSubst.back().addToSubst(getVarByName("HsVar2#0"), aax9);
-  // fakeSubst.back().addToSubst(getVarByName("HsVar7#0"), bbx10);
-  // args[0] = aax9; aux = newFuncTerm(h, args); fakeSubst.back().addToSubst(getVarByName("HsVar6#0"), aux);
-  // fakeSubst.back().addToSubst(getVarByName("HsVar5#0"), aax11);
+  // {BBx.10 <~ HsVar4#0, HsNoEqf1#0(AAx.11) <~ HsVar3#0, AAx.9 <~ HsVar2#0, BBx.10 <~ HsVar7#0, HsNoEqf1#0(AAx.9) <~ HsVar6#0, AAx.11 <~ HsVar5#0}]
+  fakeSubst.emplace_back(FastSubst());
+  fakeSubst.back().addToSubst(getVarByName("HsVar4#0"), bbx10);
+  args[0] = aax11; aux = newFuncTerm(h, args); fakeSubst.back().addToSubst(getVarByName("HsVar3#0"), aux);
+  fakeSubst.back().addToSubst(getVarByName("HsVar2#0"), aax9);
+  fakeSubst.back().addToSubst(getVarByName("HsVar7#0"), bbx10);
+  args[0] = aax9; aux = newFuncTerm(h, args); fakeSubst.back().addToSubst(getVarByName("HsVar6#0"), aux);
+  fakeSubst.back().addToSubst(getVarByName("HsVar5#0"), aax11);
 
-  // encodeSubstSet(fakeSubst);
-  // ++unifProblemsCounter;
-  // return encodedss.data();
+  encodeSubstSet(fakeSubst);
+  ++unifProblemsCounter;
+  return encodedss.data();
   FastQueryACUnify solver(0, 0);
   auto substSet = solver.solve(ues);
   for (auto& subst : substSet) {

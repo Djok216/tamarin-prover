@@ -400,7 +400,7 @@ constructTermFromPreorder indMax mapper [] (x:(-1):_) =
   where
     key = abs x
     varSort = if x > -1 then LSortMsg else LSortFresh
-    freshVar = LIT $ Var $ LVar "_x" varSort $ (indMax + 100000 + (toInteger key))
+    freshVar = LIT $ Var $ LVar "_x" varSort $ (indMax + 0 + (toInteger key))
 constructTermFromPreorder indMax mapper stk (-1:xs) = 
     constructTermFromPreorder indMax mapper nstk xs
   where
@@ -419,7 +419,7 @@ constructTermFromPreorder indMax mapper [] (x:xs) =
           _ -> error "something is wrong"
       else freshVar
     varSort = if x > -1 then LSortMsg else LSortFresh
-    freshVar = LIT $ Var $ LVar "_x" varSort $ (indMax + 100000 + toInteger key)
+    freshVar = LIT $ Var $ LVar "_x" varSort $ (indMax + 0 + toInteger key)
     nstkFAPP = [(root, [])]
 constructTermFromPreorder indMax mapper stk (x:xs) = 
     case root of
@@ -434,7 +434,7 @@ constructTermFromPreorder indMax mapper stk (x:xs) =
           _ -> error "something is wrong"
       else freshVar
     varSort = if x > -1 then LSortMsg else LSortFresh
-    freshVar = LIT $ Var $ LVar "_x" varSort $ (indMax + 100000 + (toInteger key))
+    freshVar = LIT $ Var $ LVar "_x" varSort $ (indMax + 0 + (toInteger key))
     (y:ys) = stk
     nstkLIT = (fst y, (snd y) ++ [root]) : ys
     nstkFAPP = (root, []) : stk
@@ -457,7 +457,7 @@ applyMapper indMax mapper (x:xs) =
           _ -> error "something is wrong"
       else freshVar
     varSort = if fst x > -1 then LSortMsg else LSortFresh
-    freshVar = LVar "_x" varSort (indMax + 100000 + (toInteger $ key))
+    freshVar = LVar "_x" varSort (indMax + 0 + (toInteger $ key))
     term = constructTermFromPreorder indMax mapper [] (snd x)
 
 decodeSubst 
@@ -535,7 +535,7 @@ unifyViaMaude hnd sortOf eqs =
     return ans
   where
     mapper = getMapper eqs
-    indMax = getIndMax $ M.toList mapper
+    indMax = 0 --getIndMax $ M.toList mapper
     invMapper = M.fromList $ map (\(x, y) -> (y, x)) $ M.toList mapper
     (lhsPreorder, lhsTypes, lhsSorts) = getPreorder sortOf mapper invMapper $ map (\x -> eqLHS x) eqs
     (rhsPreorder, rhsTypes, rhsSorts) = getPreorder sortOf mapper invMapper $ map (\x -> eqRHS x) eqs
