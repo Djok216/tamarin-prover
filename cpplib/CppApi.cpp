@@ -206,9 +206,11 @@ int* printSubstitutions(int n1, int* a1, int* b1, int* c1, int n2, int* a2, int*
     newSubSort(mapSorts[kSortFresh], mapSorts[kSortMsg]);
     newSubSort(mapSorts[kSortPub], mapSorts[kSortMsg]);
   }
+  /*
   vector<FastSubst> aasdadasd;
   encodeSubstSet(aasdadasd);
   if (unifProblemsCounter > 0) return encodedss.data();
+  */
   UnifEqSystem ues;
   for (int i = 0; i < n1; ++i, ++a1, ++a2, ++b1, ++b2, ++c1, ++c2) {
     int n11 = 0, n22 = 0;
@@ -219,7 +221,7 @@ int* printSubstitutions(int n1, int* a1, int* b1, int* c1, int n2, int* a2, int*
     while (n11--) ++a1, ++b1, ++c1, ++i;
     while (n22--) ++a2, ++b2, ++c2;
     ues.addEq(UnifEq(t1, t2), true);
-  }
+  }/*
   vector<FastSubst> fakeSubst;
   // {BBx.10 <~ HsVar4#0, HsACf0#0(AAx.9,BBx.12,HsNoEqf1#0(AAx.13)) <~ HsVar3#0, AAx.11 <~ HsVar2#0, BBx.12 <~ HsVar7#0, HsACf0#0(AAx.9,BBx.10,HsNoEqf1#0(AAx.11)) <~ HsVar6#0, AAx.13 <~ HsVar5#0}
   FastTerm args[2];
@@ -299,6 +301,7 @@ int* printSubstitutions(int n1, int* a1, int* b1, int* c1, int n2, int* a2, int*
   encodeSubstSet(fakeSubst);
   ++unifProblemsCounter;
   return encodedss.data();
+  */
   FastQueryACUnify solver(0, 0);
   auto substSet = solver.solve(ues);
   for (auto& subst : substSet) {
